@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="referrer" content="no-referrer">
-    <title>GOONZONE V26</title>
+    <title>Dynamic Fullscreen Arena V27</title>
     <style>
         body, html { background:#000; color:#fff; font-family:sans-serif; margin:0; padding:0; width:100vw; height:100vh; overflow:hidden; }
         #setup-screen { display:flex; flex-direction:column; align-items:center; justify-content:flex-start; height:100vh; width:100vw; overflow-y:auto; padding:24px 0; box-sizing:border-box; }
@@ -152,7 +152,7 @@
 
     <div id="setup-screen">
         <div id="setup-top">
-            <h1>Arena V26</h1>
+            <h1>Arena V27</h1>
             <div id="stats"></div>
             <div id="btn-row">
                 <button id="back-btn" class="secondary">Back to Arena</button>
@@ -209,6 +209,7 @@
                 <div class="btn-row">
                     <button id="drive-load-btn">☁ Load folder(s)</button>
                     <button id="drive-test-btn" class="secondary">Test connection</button>
+                    <button id="drive-link-btn" class="secondary" title="Copies a link that fills in these settings on another device, so you never have to type the key on a phone">📱 Copy phone link</button>
                 </div>
                 <div id="drive-status"></div>
                 <details id="drive-help">
@@ -1717,8 +1718,25 @@
         const driveSt = { token: '', exp: 0, tc: null, tcClient: '', timer: null, done: null };
         const driveEls = { folders: $('drive-folders'), key: $('drive-key'), client: $('drive-client'), mode: $('drive-mode'), sub: $('drive-sub'), status: $('drive-status') };
         driveEls.folders.value = drivePrefs.folders; driveEls.key.value = drivePrefs.key; driveEls.client.value = drivePrefs.client; driveEls.mode.value = drivePrefs.mode; driveEls.sub.checked = !!drivePrefs.sub;
+        // Phones love to "fix" text: curly quotes, long dashes, invisible spaces, line breaks. Put the key back to plain characters.
+        function cleanSecret(v) {
+            return String(v || '')
+                .replace(/[\u200B-\u200D\u2060\uFEFF\u00AD]/g, '')
+                .replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g, '-')
+                .replace(/[\uFF3F\u2017]/g, '_')
+                .replace(/\s+/g, '')
+                .replace(/^["'`\u2018\u2019\u201C\u201D<(\[]+|["'`\u2018\u2019\u201C\u201D>)\].,;:]+$/g, '');
+        }
+        function describeKey(k) {
+            if (!k) return 'empty';
+            const odd = [...k].filter(c => !/[0-9A-Za-z_-]/.test(c)).map(c => 'U+' + c.codePointAt(0).toString(16).toUpperCase().padStart(4, '0') + ' (' + c + ')');
+            const shape = /^AIza[0-9A-Za-z_-]{35}$/.test(k) ? 'looks like a normal key' : 'a normal key is 39 characters starting with "AIza"';
+            return `${k.length} characters, starting "${k.slice(0, 4)}", ending "${k.slice(-3)}" (${shape})` + (odd.length ? `; unusual characters: ${odd.slice(0, 4).join(', ')}` : '');
+        }
         function readDriveForm() {
-            drivePrefs.folders = driveEls.folders.value; drivePrefs.key = driveEls.key.value.trim(); drivePrefs.client = driveEls.client.value.trim();
+            drivePrefs.folders = driveEls.folders.value; drivePrefs.key = cleanSecret(driveEls.key.value); drivePrefs.client = cleanSecret(driveEls.client.value);
+            if (driveEls.key.value !== drivePrefs.key) driveEls.key.value = drivePrefs.key;
+            if (driveEls.client.value !== drivePrefs.client) driveEls.client.value = drivePrefs.client;
             drivePrefs.mode = driveEls.mode.value; drivePrefs.sub = driveEls.sub.checked;
             saveJSON('arenaDriveV1', drivePrefs);
         }
@@ -1760,7 +1778,7 @@
             if (/SERVICE_DISABLED/.test(r) || /has not been used|is disabled/i.test(m)) t = 'The Google Drive API is not enabled for the project this key belongs to. In Google Cloud Console open that same project → APIs & Services → Library → Google Drive API → Enable.' + google;
             else if (/API_KEY_SERVICE_BLOCKED/.test(r) || /are blocked/i.test(m) && !/referer|referrer/i.test(m)) t = "This API key is restricted to other APIs. Edit the key → API restrictions → tick Google Drive API (or temporarily choose 'Don't restrict key'). Changes can take a few minutes." + google;
             else if (/REFERRER|REFERER|IP_ADDRESS|ANDROID|IOS_APP/.test(r) || /referer|referrer/i.test(m)) t = "The key has an application restriction (website / IP / app). Edit the key → Application restrictions → None." + google;
-            else if (/API_KEY_INVALID/.test(r) || /API key not valid/i.test(m)) t = 'Google says this API key is not valid. Re-copy it from Credentials, with no extra characters.' + google;
+            else if (/API_KEY_INVALID/.test(r) || /API key not valid/i.test(m)) t = 'Google says this API key is not valid. The key Arena sent is ' + describeKey(drivePrefs.key) + '. Compare that with the key in Google Cloud (Credentials). Easiest fix: use "📱 Copy phone link" on your computer and open that link on the phone.';
             else if (status === 400) t = `Google rejected the request. Check the folder link and the ${priv ? 'Client ID' : 'API key'}.` + google;
             else if (status === 401) t = 'Your Google sign-in is missing or expired. Press "Sign in & load" again.';
             else if (status === 403) t = priv ? 'Access denied. The signed-in account can\'t open that folder, or the Drive API isn\'t enabled for your project.' + google
@@ -1907,6 +1925,35 @@
                 driveStatus(ok === true ? `✅ Connected. The folder is readable and "${media.name}" loads fine.` : `⚠ The folder lists fine, but downloading "${media.name}" ${ok === null ? 'timed out' : 'failed'}. For a shared folder check the key's API restriction; the file's download quota may also be used up.`, ok !== true);
             } catch (e) { driveStatus(e.message, true); }
         }
+
+        // ---- Move the settings between devices without typing the key ----
+        const b64u = str => btoa(unescape(encodeURIComponent(str))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        const unb64u = str => decodeURIComponent(escape(atob(str.replace(/-/g, '+').replace(/_/g, '/'))));
+        $('drive-link-btn').addEventListener('click', async () => {
+            readDriveForm();
+            let base = /^https?:/i.test(location.protocol) ? location.origin + location.pathname : (loadJSON('arenaHostedUrlV1', '') || '');
+            if (!base) {
+                base = (prompt('What web address do you open Arena from on your phone? (for example https://yoursite.netlify.app/)', 'https://') || '').trim();
+                if (!/^https?:\/\/.{4,}/i.test(base)) { driveStatus('Cancelled: no web address given.', true); return; }
+                saveJSON('arenaHostedUrlV1', base);
+            }
+            const link = base + '#drive=' + b64u(JSON.stringify({ k: drivePrefs.key, c: drivePrefs.client, f: drivePrefs.folders, m: drivePrefs.mode, s: drivePrefs.sub ? 1 : 0 }));
+            try { await navigator.clipboard.writeText(link); driveStatus('✅ Link copied. Open it on your phone and the settings fill in. It contains your key, so treat it like the key itself.'); }
+            catch (e) { prompt('Copy this link (it contains your key, so keep it private):', link); }
+        });
+        (function importDriveFromLink() {
+            const m = location.hash.match(/^#drive=([\w-]+)/);
+            if (!m) return;
+            try {
+                const o = JSON.parse(unb64u(m[1]));
+                drivePrefs.key = cleanSecret(o.k); drivePrefs.client = cleanSecret(o.c); drivePrefs.folders = String(o.f || ''); drivePrefs.mode = o.m === 'oauth' ? 'oauth' : 'key'; drivePrefs.sub = o.s !== 0;
+                saveJSON('arenaDriveV1', drivePrefs);
+                driveEls.folders.value = drivePrefs.folders; driveEls.key.value = drivePrefs.key; driveEls.client.value = drivePrefs.client; driveEls.mode.value = drivePrefs.mode; driveEls.sub.checked = drivePrefs.sub;
+                syncDriveUi();
+                driveStatus('✅ Drive settings filled in from the link. Press Load.');
+            } catch (e) { driveStatus('That settings link looks damaged: copy it again.', true); }
+            try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}      // keep the key out of the address bar / history
+        })();
         $('drive-load-btn').addEventListener('click', loadDrive);
         $('drive-test-btn').addEventListener('click', testDrive);
         if (drivePrefs.mode === 'key' && drivePrefs.key) applyDriveAuth();      // favorites from Drive work straight away
