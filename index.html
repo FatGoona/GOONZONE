@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="referrer" content="no-referrer">
-    <title>Goonzone V22</title>
+    <title>Dynamic Fullscreen Arena V24</title>
     <style>
         body, html { background:#000; color:#fff; font-family:sans-serif; margin:0; padding:0; width:100vw; height:100vh; overflow:hidden; }
         #setup-screen { display:flex; flex-direction:column; align-items:center; justify-content:flex-start; height:100vh; width:100vw; overflow-y:auto; padding:24px 0; box-sizing:border-box; }
@@ -30,6 +30,25 @@
         .cell.cover img, .cell.cover video, .cell.cover canvas { object-fit:cover; }
         .cell iframe { width:100%; height:100%; border:0; background:#000; }
         .cell-actions.always { opacity:.9; }
+        .free-handle { position:absolute; top:0; left:0; right:0; height:22px; z-index:9; display:flex; align-items:center; justify-content:space-between; padding:0 4px 0 8px; background:linear-gradient(rgba(0,0,0,.7), rgba(0,0,0,0)); color:#fff; font-size:.72rem; cursor:move; opacity:.3; transition:opacity .15s ease; touch-action:none; user-select:none; }
+        .cell:hover .free-handle, .free-handle:hover { opacity:1; }
+        .free-x { cursor:pointer; padding:1px 7px; border-radius:3px; }
+        .free-x:hover { background:#b91c1c; }
+        .free-rz { position:absolute; z-index:9; touch-action:none; }
+        .free-rz[data-dir="n"] { top:0; left:14px; right:14px; height:6px; cursor:ns-resize; }
+        .free-rz[data-dir="s"] { bottom:0; left:14px; right:14px; height:6px; cursor:ns-resize; }
+        .free-rz[data-dir="w"] { left:0; top:14px; bottom:14px; width:6px; cursor:ew-resize; }
+        .free-rz[data-dir="e"] { right:0; top:14px; bottom:14px; width:6px; cursor:ew-resize; }
+        .free-rz[data-dir="nw"] { top:0; left:0; width:14px; height:14px; cursor:nwse-resize; }
+        .free-rz[data-dir="se"] { bottom:0; right:0; width:14px; height:14px; cursor:nwse-resize; }
+        .free-rz[data-dir="ne"] { top:0; right:0; width:14px; height:14px; cursor:nesw-resize; }
+        .free-rz[data-dir="sw"] { bottom:0; left:0; width:14px; height:14px; cursor:nesw-resize; }
+        .free-rz[data-dir="se"]::after { content:""; position:absolute; right:3px; bottom:3px; width:7px; height:7px; border-right:2px solid rgba(255,255,255,.55); border-bottom:2px solid rgba(255,255,255,.55); }
+        #free-tools { display:none; gap:6px; align-items:center; }
+        #free-toast { position:absolute; left:50%; bottom:60px; transform:translateX(-50%); z-index:40; background:rgba(0,0,0,.9); color:#fff; border:1px solid #666; padding:8px 14px; border-radius:6px; font-size:.85rem; display:none; pointer-events:none; }
+        #stream-layer { position:absolute; inset:0; z-index:3; pointer-events:none; }       /* embedded streams live here, so rebuilding the tiles never reloads them */
+        .stream-frame { position:absolute; display:none; overflow:hidden; background:#000; pointer-events:auto; }
+        .stream-frame iframe { position:absolute; inset:0; width:100%; height:100%; border:0; background:#000; transform-origin:0 0; }
         .cell iframe[data-crop] { position:absolute; inset:0; transform-origin:0 0; }
                 .crop-panel { position:fixed; right:8px; top:8px; z-index:30; width:230px; padding:8px 10px; background:rgba(0,0,0,.9); border:1px solid #555; border-radius:6px; font-size:.75rem; display:flex; flex-direction:column; gap:6px; cursor:default; }
         .crop-panel label { display:flex; align-items:center; gap:6px; }
@@ -54,7 +73,7 @@
         .cell-actions a, .cell-actions button { background:rgba(0,0,0,.85); color:#fff; border:1px solid #555; padding:4px 8px; font-size:.72rem; line-height:1.2; font-weight:normal; border-radius:4px; text-decoration:none; cursor:pointer; }
         .cell-actions a:hover, .cell-actions button:hover { background:#3b82f6; border-color:#3b82f6; }
         .cell-actions button.on { background:#f59e0b; border-color:#f59e0b; color:#000; }
-        #hud { position:absolute; bottom:10px; right:15px; background:rgba(0,0,0,.8); padding:6px 12px; font-size:.8rem; color:#aaa; border-radius:4px; pointer-events:none; z-index:10; }
+        #hud { z-index:8; position:absolute; bottom:10px; right:15px; background:rgba(0,0,0,.8); padding:6px 12px; font-size:.8rem; color:#aaa; border-radius:4px; pointer-events:none; z-index:10; }
         #controls { position:absolute; top:10px; right:10px; z-index:20; display:flex; flex-wrap:wrap; justify-content:flex-end; align-items:center; max-width:92vw; gap:6px; opacity:.4; transition:opacity .2s ease; }
         #controls:hover { opacity:1; }
         #controls { pointer-events:none; }                       /* the empty gaps between buttons must not block the tiles underneath */
@@ -122,7 +141,7 @@
 
     <div id="setup-screen">
         <div id="setup-top">
-            <h1>Arena V22</h1>
+            <h1>Arena V24</h1>
             <div id="stats"></div>
             <div id="btn-row">
                 <button id="back-btn" class="secondary">Back to Arena</button>
@@ -201,6 +220,7 @@
             <button id="dojin-btn" title="Resume reading your dojin in the spotlight">📖 Dojin</button>
             <button id="pick-btn" title="Choose which video or stream goes in which spot (V)">📺 Pick</button>
             <select id="layout-select" title="Layout">
+                <option value="free">Free: drag &amp; resize tiles</option>
                 <option value="spot1">Spotlight ×1 (native size)</option>
                 <option value="spot2">Spotlight ×2 (native size)</option>
                 <option value="spot3">Spotlight ×3 (native size)</option>
@@ -251,6 +271,7 @@
             <button id="fav-import-btn" title="Load favorites from an exported JSON file">⬆ Import</button>
             <input type="file" id="fav-import-file" accept=".json,application/json" style="display:none">
             <span id="folder-status" style="font-size:.75rem;color:#aaa"></span>
+            <span id="free-tools"><button id="free-add" title="Add a tile in the biggest free space (or double-click any empty space)">➕ Add tile</button><button id="free-reset" title="Re-create the free layout as a 3×2 grid">↺ Reset tiles</button></span>
             <button id="ctl-hide" title="Hide this bar so it can't cover anything (press H to bring it back)">🙈 Hide bar</button>
             <button id="reset-btn">← Add More HTML</button>
         </div>
@@ -270,6 +291,7 @@
         </div>
         <div id="hud"><span id="hud-mode"></span> · Remaining in queue: <span id="pool-count">0</span></div>
         <div id="grid-container"></div>
+        <div id="stream-layer"></div>
     </div>
 
     <script>
@@ -322,7 +344,7 @@
         const heroCount = () => heroKinds().length;
         const slotKind = pos => heroKinds()[pos] || null;
         const hasCam = () => heroKinds().includes('cam');
-        const streamsCamOnly = () => prefs.camOnly && !(viewMode === 'favs' && favSource === 'streams');
+        const streamsCamOnly = () => prefs.camOnly && !isFree() && !(viewMode === 'favs' && favSource === 'streams');
         const camRatio = () => { const [a, b] = String(prefs.camAR || '16:9').split(':').map(Number); return a > 0 && b > 0 ? a / b : 16 / 9; };
         const curFit = () => (isSpot() ? prefs.fitSpot : prefs.fit);
         const comic = { on: false, pages: [], index: 0, title: '', id: '' };
@@ -523,7 +545,7 @@
             const L = px * (1 - 1 / z), T = py * (1 - 1 / z);      // top-left of the visible window, as fractions of the page
             el.style.transform = z <= 1.001 ? '' : `translate(${(-L * z * 100).toFixed(3)}%, ${(-T * z * 100).toFixed(3)}%) scale(${z})`;
         }
-        const refreshCrops = () => gridContainer.querySelectorAll('iframe[data-crop]').forEach(f => { if (f._item) applyCrop(f, f._item); });
+        const refreshCrops = () => $('stream-layer').querySelectorAll('iframe[data-crop]').forEach(f => { if (f._item) applyCrop(f, f._item); });
 
         function openCropPanel(cell, iframe, item) {
             const old = cell.querySelector('.crop-panel');
@@ -847,6 +869,7 @@
 
         // ---------- LAYOUT GEOMETRY ----------
         function currentGeometry() {
+            if (isFree()) { ensureFreeRects(); return { kind: 'free', count: freeRects.length }; }
             if (!isSpot()) {
                 const [cols, rows] = LAYOUTS[prefs.layout] || [3, 2];
                 return { kind: 'grid', cols, rows, count: cols * rows };
@@ -886,6 +909,226 @@
             return Object.assign({ kind: 'spot' }, g);
         }
 
+        // ---------- Persistent embedded streams ----------
+        // A browser reloads an <iframe> whenever it is removed from the page, so embeds can't live inside tiles that get rebuilt.
+        // They sit in their own layer instead and are simply moved/resized to follow whichever tile currently shows them.
+        const streamLayer = $('stream-layer');
+        const streamFrames = new Map();      // item key -> { wrap, iframe, cell, rect }
+        let buildingDom = false;
+        function frameFor(item, cell) {
+            let fr = streamFrames.get(item._key);
+            if (!fr) {
+                const wrap = document.createElement('div');
+                wrap.className = 'stream-frame';
+                const iframe = document.createElement('iframe');
+                iframe.src = item.url;
+                iframe.allow = 'autoplay; fullscreen; picture-in-picture; encrypted-media';
+                iframe.allowFullscreen = true;
+                iframe.referrerPolicy = 'strict-origin-when-cross-origin';      // YouTube embeds need a referrer
+                iframe.dataset.crop = '1';
+                wrap.appendChild(iframe);
+                streamLayer.appendChild(wrap);
+                fr = { wrap, iframe, cell: null, rect: '' };
+                streamFrames.set(item._key, fr);
+            }
+            fr.iframe._item = item;
+            fr.cell = cell;
+            applyCrop(fr.iframe, item);
+            return fr;
+        }
+        function pruneFrames() {      // drop embeds that no tile shows any more
+            streamFrames.forEach((fr, k) => { if (!fr.cell || !fr.cell.isConnected) { fr.wrap.remove(); streamFrames.delete(k); } });
+        }
+        function syncStreamFrames() {
+            if (!streamFrames.size) return;
+            const lr = streamLayer.getBoundingClientRect();
+            streamFrames.forEach(fr => {
+                const c = fr.cell, r = c && c.isConnected ? c.getBoundingClientRect() : null;
+                if (!r || !r.width || !r.height) { fr.wrap.style.display = 'none'; fr.rect = ''; return; }
+                const key = [r.left - lr.left, r.top - lr.top, r.width, r.height].join('|');
+                if (key === fr.rect) return;
+                fr.rect = key;
+                const st = fr.wrap.style;
+                st.display = 'block'; st.left = (r.left - lr.left) + 'px'; st.top = (r.top - lr.top) + 'px'; st.width = r.width + 'px'; st.height = r.height + 'px';
+            });
+        }
+        (function followTiles() { syncStreamFrames(); requestAnimationFrame(followTiles); })();
+
+        // ---------- Free layout: drag, resize, add and remove tiles ----------
+        function isFree() { return prefs.layout === 'free' && !comic.on; }
+        let freeRects = loadJSON('arenaFreeV1', null);          // one [x, y, w, h] per tile, as fractions of the screen (so it survives window resizes)
+        const saveFree = () => saveJSON('arenaFreeV1', freeRects);
+        const FREE_MIN = { w: 90, h: 60 }, FREE_SNAP = 10, FEPS = 1e-4;
+        const r4 = n => Math.round(n * 10000) / 10000;
+        function defaultFreeRects(cols = 3, rows = 2) {
+            const out = [];
+            for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) out.push([r4(c / cols), r4(r / rows), r4(1 / cols), r4(1 / rows)]);
+            return out;
+        }
+        function seedFreeFromCells() {                            // start from whatever layout is on screen now
+            const gr = gridContainer.getBoundingClientRect();
+            if (!arenaStarted || !cells.length || !gr.width || !gr.height) freeRects = defaultFreeRects();
+            else freeRects = cells.map(c => { const r = c.getBoundingClientRect(); return [r4((r.left - gr.left) / gr.width), r4((r.top - gr.top) / gr.height), r4(r.width / gr.width), r4(r.height / gr.height)]; });
+            saveFree();
+        }
+        function ensureFreeRects() { if (!Array.isArray(freeRects)) seedFreeFromCells(); }
+        function placeFreeCell(cell, r) {
+            const st = cell.style;
+            st.position = 'absolute'; st.flex = ''; st.left = (r[0] * 100) + '%'; st.top = (r[1] * 100) + '%'; st.width = (r[2] * 100) + '%'; st.height = (r[3] * 100) + '%';
+        }
+        const rectsOverlap = (a, b) => a[0] < b[0] + b[2] - FEPS && a[0] + a[2] > b[0] + FEPS && a[1] < b[1] + b[3] - FEPS && a[1] + a[3] > b[1] + FEPS;
+        const hitsOthers = (r, skip) => freeRects.some((o, i) => i !== skip && rectsOverlap(r, o));
+        const inScreen = r => r[0] >= -FEPS && r[1] >= -FEPS && r[0] + r[2] <= 1 + FEPS && r[1] + r[3] <= 1 + FEPS;
+        function freeToast(msg) {
+            let t = $('free-toast');
+            if (!t) { t = document.createElement('div'); t.id = 'free-toast'; arenaScreen.appendChild(t); }
+            t.textContent = msg; t.style.display = 'block';
+            clearTimeout(freeToast._t); freeToast._t = setTimeout(() => { t.style.display = 'none'; }, 2600);
+        }
+
+        // Drag a tile by its top strip, or resize it from any edge/corner. Tiles never overlap and snap to each other's edges.
+        function startFreeDrag(e, cell, mode) {
+            const pos = cells.indexOf(cell);
+            if (pos < 0 || !freeRects[pos]) return;
+            e.preventDefault(); e.stopPropagation();
+            const el = e.currentTarget;
+            try { el.setPointerCapture(e.pointerId); } catch (err) {}
+            const W = gridContainer.clientWidth, H = gridContainer.clientHeight;
+            const start = freeRects[pos].slice(), sx = e.clientX, sy = e.clientY;
+            let last = start.slice();
+            const xs = [0, 1], ys = [0, 1];
+            freeRects.forEach((o, i) => { if (i !== pos) { xs.push(o[0], o[0] + o[2]); ys.push(o[1], o[1] + o[3]); } });
+            const snap = (vals, cands, thr) => { let best = 0, bd = thr; vals.forEach(v => cands.forEach(c => { const d = c - v; if (Math.abs(d) < bd) { bd = Math.abs(d); best = d; } })); return best; };
+            const minW = FREE_MIN.w / W, minH = FREE_MIN.h / H;
+            const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
+            const compute = (dx, dy, useX = true, useY = true) => {
+                let [x, y, w, h] = start;
+                if (!useX) x = last[0];
+                if (!useY) y = last[1];
+                if (mode === 'move') {
+                    if (useX) { x = clamp(x + dx, 0, 1 - w); x = clamp(x + snap([x, x + w], xs, FREE_SNAP / W), 0, 1 - w); }
+                    if (useY) { y = clamp(y + dy, 0, 1 - h); y = clamp(y + snap([y, y + h], ys, FREE_SNAP / H), 0, 1 - h); }
+                } else {
+                    let l = x, t = y, rt = x + w, b = y + h;
+                    if (mode.includes('w')) { l = clamp(l + dx, 0, rt - minW); l = clamp(l + snap([l], xs, FREE_SNAP / W), 0, rt - minW); }
+                    if (mode.includes('e')) { rt = clamp(rt + dx, l + minW, 1); rt = clamp(rt + snap([rt], xs, FREE_SNAP / W), l + minW, 1); }
+                    if (mode.includes('n')) { t = clamp(t + dy, 0, b - minH); t = clamp(t + snap([t], ys, FREE_SNAP / H), 0, b - minH); }
+                    if (mode.includes('s')) { b = clamp(b + dy, t + minH, 1); b = clamp(b + snap([b], ys, FREE_SNAP / H), t + minH, 1); }
+                    x = l; y = t; w = rt - l; h = b - t;
+                }
+                return [r4(x), r4(y), r4(w), r4(h)];
+            };
+            const move = ev => {
+                const dx = (ev.clientX - sx) / W, dy = (ev.clientY - sy) / H;
+                let r = compute(dx, dy);
+                if (hitsOthers(r, pos)) {
+                    if (mode === 'move') {                                  // slide along a neighbour instead of stopping dead
+                        const rx = compute(dx, dy, true, false), ry = compute(dx, dy, false, true);
+                        r = !hitsOthers(rx, pos) ? rx : (!hitsOthers(ry, pos) ? ry : null);
+                    } else r = null;
+                }
+                if (!r) return;
+                last = r; freeRects[pos] = r; placeFreeCell(cell, r);
+            };
+            const up = () => { el.removeEventListener('pointermove', move); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up); saveFree(); };
+            el.addEventListener('pointermove', move); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+        }
+
+        function addFreeChrome(cell) {
+            const h = document.createElement('div');
+            h.className = 'free-handle'; h.title = 'Drag to move this tile';
+            h.appendChild(document.createTextNode('⠿ drag'));
+            const x = document.createElement('span');
+            x.className = 'free-x'; x.textContent = '✕'; x.title = 'Remove this tile (frees the space)';
+            x.addEventListener('pointerdown', e => e.stopPropagation());
+            x.addEventListener('click', e => { e.stopPropagation(); removeFreeTile(cells.indexOf(cell)); });
+            h.appendChild(x);
+            h.addEventListener('pointerdown', e => { if (e.target !== x) startFreeDrag(e, cell, 'move'); });
+            h.addEventListener('click', e => e.stopPropagation());
+            cell.appendChild(h);
+            ['n', 's', 'e', 'w', 'nw', 'ne', 'sw', 'se'].forEach(d => {
+                const z = document.createElement('div');
+                z.className = 'free-rz'; z.dataset.dir = d;
+                z.addEventListener('pointerdown', e => startFreeDrag(e, cell, d));
+                z.addEventListener('click', e => e.stopPropagation());
+                cell.appendChild(z);
+            });
+        }
+
+        function removeFreeTile(pos) {
+            if (!isFree() || !freeRects[pos]) return;
+            freeRects.splice(pos, 1); activeSlots.splice(pos, 1);      // its item goes back to the queue
+            saveFree(); rebuildLayout();
+        }
+        function addFreeTile(rect) {
+            if (!rect) { freeToast('No room there: shrink or remove a tile first'); return false; }
+            freeRects.push(rect); activeSlots.push(null);
+            saveFree(); rebuildLayout();
+            return true;
+        }
+        // Biggest empty rectangle on the screen (for the ➕ button)
+        function largestFreeRect() {
+            const W = gridContainer.clientWidth, H = gridContainer.clientHeight;
+            const cols = 40, rows = Math.max(18, Math.min(40, Math.round(40 * H / W)));
+            const occ = Array.from({ length: rows }, () => new Array(cols).fill(false));
+            freeRects.forEach(o => {
+                const c0 = Math.floor((o[0] + FEPS) * cols), c1 = Math.ceil((o[0] + o[2] - FEPS) * cols), r0 = Math.floor((o[1] + FEPS) * rows), r1 = Math.ceil((o[1] + o[3] - FEPS) * rows);
+                for (let r = r0; r < r1 && r < rows; r++) for (let c = c0; c < c1 && c < cols; c++) occ[r][c] = true;
+            });
+            const hist = new Array(cols).fill(0); let best = null;
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) hist[c] = occ[r][c] ? 0 : hist[c] + 1;
+                const stack = [];
+                for (let c = 0; c <= cols; c++) {
+                    const hc = c === cols ? 0 : hist[c];
+                    let st = c;
+                    while (stack.length && stack[stack.length - 1].h >= hc) {
+                        const t = stack.pop(), area = t.h * (c - t.i);
+                        if (!best || area > best.area) best = { area, c0: t.i, c1: c, r0: r + 1 - t.h, r1: r + 1 };
+                        st = t.i;
+                    }
+                    stack.push({ i: st, h: hc });
+                }
+            }
+            if (!best) return null;
+            let w = (best.c1 - best.c0) / cols, h = (best.r1 - best.r0) / rows;
+            w = Math.min(w, 0.5); h = Math.min(h, 0.6);
+            if (w * W < FREE_MIN.w || h * H < FREE_MIN.h) return null;
+            return [r4(best.c0 / cols), r4(best.r0 / rows), r4(w), r4(h)];
+        }
+        // Grow a tile outwards from a point you double-clicked
+        function growRectAt(px, py) {
+            const W = gridContainer.clientWidth, H = gridContainer.clientHeight;
+            const fx = px / W, fy = py / H, sx = 0.01, sy = 0.01 * W / H;
+            let r = [Math.max(0, fx - sx), Math.max(0, fy - sy), 2 * sx, 2 * sy];
+            r[2] = Math.min(r[2], 1 - r[0]); r[3] = Math.min(r[3], 1 - r[1]);
+            if (hitsOthers(r, -1)) return null;
+            const MAXW = 0.45, MAXH = 0.55;
+            for (let guard = 0; guard < 400; guard++) {
+                let grew = false;
+                for (const side of ['e', 's', 'w', 'n']) {
+                    const t = r.slice();
+                    if (side === 'e') t[2] += sx; if (side === 's') t[3] += sy; if (side === 'w') { t[0] -= sx; t[2] += sx; } if (side === 'n') { t[1] -= sy; t[3] += sy; }
+                    if (!inScreen(t) || t[2] > MAXW || t[3] > MAXH || hitsOthers(t, -1)) continue;
+                    r = t; grew = true;
+                }
+                if (!grew) break;
+            }
+            if (r[2] * W < FREE_MIN.w || r[3] * H < FREE_MIN.h) return null;
+            return r.map(r4);
+        }
+        gridContainer.addEventListener('dblclick', e => {
+            if (!isFree() || e.target !== gridContainer) return;
+            const gr = gridContainer.getBoundingClientRect();
+            addFreeTile(growRectAt(e.clientX - gr.left, e.clientY - gr.top));
+        });
+        function syncFreeUi() { $('free-tools').style.display = prefs.layout === 'free' ? 'inline-flex' : 'none'; }
+        $('free-add').addEventListener('click', () => addFreeTile(largestFreeRect()));
+        $('free-reset').addEventListener('click', () => {
+            if (!confirm('Reset the free layout to a 3×2 grid? Your tile arrangement will be replaced.')) return;
+            freeRects = defaultFreeRects(); saveFree(); rebuildLayout();
+        });
+
         function makeCell(cover) {
             const pos = cells.length;
             const cell = document.createElement('div');
@@ -918,7 +1161,10 @@
             cells = [];
             const st = gridContainer.style;
             const tileCover = curFit() === 'cover';
-            if (geo.kind === 'grid') {
+            if (geo.kind === 'free') {
+                st.display = 'block'; st.gridTemplateColumns = ''; st.gridTemplateRows = '';
+                freeRects.forEach(r => { const c = makeCell(tileCover); placeFreeCell(c, r); gridContainer.appendChild(c); });
+            } else if (geo.kind === 'grid') {
                 st.display = 'grid';
                 st.gridTemplateColumns = `repeat(${geo.cols}, 1fr)`;
                 st.gridTemplateRows = `repeat(${geo.rows}, 1fr)`;
@@ -939,11 +1185,15 @@
                 cols.forEach(c => gridContainer.appendChild(c));
                 if (geo.rc) gridContainer.appendChild(makeRegion(geo.rc, geo.rr, { flex: '1 1 0' }));
             }
-            cells.forEach((c, i) => {
-                const it = slotItem(i);
-                c._keep = (it && keepMap.get(it)) || null;      // same item still on screen: reuse its element
-                renderCell(c, i);
-            });
+            buildingDom = true;
+            try {
+                cells.forEach((c, i) => {
+                    const it = slotItem(i);
+                    c._keep = (it && keepMap.get(it)) || null;      // same item still on screen: reuse its element
+                    renderCell(c, i);
+                });
+            } finally { buildingDom = false; }
+            pruneFrames(); syncStreamFrames();
             killStreams(hold);                                   // anything not reused is shut down
             hold.querySelectorAll('video').forEach(v => v.pause());
             lastHeroSize = geo.kind === 'spot' ? geo.heroes[0].hw + 'x' + geo.heroes[0].hh : '';
@@ -1193,6 +1443,12 @@
 
         // ---------- CELL RENDERING ----------
         function renderCell(cell, pos) {
+            if (cell._frame) { if (cell._frame.cell === cell) cell._frame.cell = null; cell._frame = null; }
+            renderCellInner(cell, pos);
+            if (isFree()) addFreeChrome(cell);
+            if (!buildingDom) { pruneFrames(); syncStreamFrames(); }
+        }
+        function renderCellInner(cell, pos) {
             killStreams(cell);
             cell.innerHTML = '';
             const item = slotItem(pos);
@@ -1208,18 +1464,12 @@
 
             let mediaEl;
             const isVid = item.isVideo || VID_RE.test(item.url);
-            let spriteImg = null;
+            let spriteImg = null, hosted = false;
             if (keep) {
                 mediaEl = keep;                                  // already loaded and playing: just move it in
             } else if (item.streamType === 'iframe') {
-                mediaEl = document.createElement('iframe');
-                mediaEl.src = item.url;
-                mediaEl.allow = 'autoplay; fullscreen; picture-in-picture; encrypted-media';
-                mediaEl.allowFullscreen = true;
-                mediaEl.referrerPolicy = 'strict-origin-when-cross-origin';      // YouTube embeds need a referrer
-                mediaEl.dataset.crop = '1';
-                mediaEl._item = item;
-                applyCrop(mediaEl, item);
+                const fr = frameFor(item, cell);                // lives in the stream layer, positioned over this tile
+                cell._frame = fr; mediaEl = fr.iframe; hosted = true;
             } else if (item.sprite) {
                 const { w, h, x, y } = item.sprite;
                 mediaEl = document.createElement('canvas');
@@ -1257,7 +1507,7 @@
                 item._dim = { w, h };
                 if (isSpot() && pos < heroCount() && slotKind(pos) !== 'cam' && (!old || Math.abs(old.w - w) > 1 || Math.abs(old.h - h) > 1)) scheduleRebuild();
             };
-            mediaEl.addEventListener(isVid ? 'loadedmetadata' : 'load', noteSize);
+            if (!hosted) mediaEl.addEventListener(isVid ? 'loadedmetadata' : 'load', noteSize);
 
             mediaEl.onerror = () => {
                 if (item.isStream) { streamDown(cell, pos, item); return; }
@@ -1299,7 +1549,7 @@
             };
 
             if (spriteImg) spriteImg.onerror = mediaEl.onerror;
-            cell.appendChild(mediaEl);
+            if (!hosted) cell.appendChild(mediaEl);
             cell._item = item; cell._media = mediaEl;
             cell._zoom = null; cell.classList.remove('zoomed');                       // a new item always starts at default zoom
             if (mediaEl.tagName !== 'IFRAME') { mediaEl.style.transform = ''; mediaEl.style.transformOrigin = ''; }
@@ -1625,6 +1875,7 @@
         layoutSelect.value = prefs.layout;
         fitSelect.value = curFit();
         syncCamUi();
+        syncFreeUi();
 
         // ---------- LOCAL FOLDER (Chrome / Edge) + EXPORT / IMPORT ----------
         // Folder layout:  arena-favorites.json, arena-session.json, favorites/<media files>
@@ -2064,7 +2315,9 @@
         });
 
         layoutSelect.addEventListener('change', () => {
+            if (layoutSelect.value === 'free' && !Array.isArray(freeRects)) { prefs.layout = 'free'; seedFreeFromCells(); }      // first time: start from the layout you were looking at
             prefs.layout = layoutSelect.value;
+            syncFreeUi();
             heroTarget = null; heroRR = 0; camRR = 0;
             fitSelect.value = curFit();
             savePrefs();
