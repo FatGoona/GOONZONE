@@ -2,8 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="referrer" content="no-referrer">
-    <title>GOONZONE V24</title>
+    <title>GOONZONE V26</title>
     <style>
         body, html { background:#000; color:#fff; font-family:sans-serif; margin:0; padding:0; width:100vw; height:100vh; overflow:hidden; }
         #setup-screen { display:flex; flex-direction:column; align-items:center; justify-content:flex-start; height:100vh; width:100vw; overflow-y:auto; padding:24px 0; box-sizing:border-box; }
@@ -46,6 +47,13 @@
         .free-rz[data-dir="se"]::after { content:""; position:absolute; right:3px; bottom:3px; width:7px; height:7px; border-right:2px solid rgba(255,255,255,.55); border-bottom:2px solid rgba(255,255,255,.55); }
         #free-tools { display:none; gap:6px; align-items:center; }
         #free-toast { position:absolute; left:50%; bottom:60px; transform:translateX(-50%); z-index:40; background:rgba(0,0,0,.9); color:#fff; border:1px solid #666; padding:8px 14px; border-radius:6px; font-size:.85rem; display:none; pointer-events:none; }
+        #drive-box input[type=text], #drive-box select { width:100%; box-sizing:border-box; background:#111; color:#fff; border:1px solid #333; border-radius:6px; padding:9px; margin:0 0 8px; font-size:.85rem; }
+        #drive-box textarea { height:70px !important; min-height:60px !important; }
+        #drive-box label.chk { display:flex; align-items:center; gap:6px; color:#9ca3af; font-size:.8rem; justify-content:center; margin:2px 0 8px; }
+        #drive-status { min-height:18px; font-size:.8rem; margin-top:8px; color:#9ca3af; }
+        #drive-help { text-align:left; color:#9ca3af; font-size:.76rem; margin-top:10px; }
+        #drive-help summary { cursor:pointer; color:#38bdf8; }
+        #drive-help ol { margin:6px 0 6px 18px; padding:0; } #drive-help li { margin:3px 0; } #drive-help code { background:#1a1a1a; padding:1px 4px; border-radius:3px; }
         #stream-layer { position:absolute; inset:0; z-index:3; pointer-events:none; }       /* embedded streams live here, so rebuilding the tiles never reloads them */
         .stream-frame { position:absolute; display:none; overflow:hidden; background:#000; pointer-events:auto; }
         .stream-frame iframe { position:absolute; inset:0; width:100%; height:100%; border:0; background:#000; transform-origin:0 0; }
@@ -70,6 +78,8 @@
         .cell-actions { position:absolute; bottom:44px; left:8px; right:8px; display:flex; flex-direction:row; flex-wrap:wrap; align-items:flex-end; justify-content:flex-start; gap:4px; z-index:5; opacity:0; transition:opacity .2s ease; pointer-events:none; }
         .cell-actions a, .cell-actions button { pointer-events:auto; white-space:nowrap; }
         .cell:hover .cell-actions { opacity:1; }
+        @media (hover:none) { .cell-actions { opacity:.92; } .cell-actions a, .cell-actions button { padding:6px 10px; font-size:.78rem; } .free-handle { opacity:.8; } .save-badge { opacity:.9; } }      /* touch screens have no hover: keep each tile's buttons visible */
+        #grid-container { touch-action:manipulation; }
         .cell-actions a, .cell-actions button { background:rgba(0,0,0,.85); color:#fff; border:1px solid #555; padding:4px 8px; font-size:.72rem; line-height:1.2; font-weight:normal; border-radius:4px; text-decoration:none; cursor:pointer; }
         .cell-actions a:hover, .cell-actions button:hover { background:#3b82f6; border-color:#3b82f6; }
         .cell-actions button.on { background:#f59e0b; border-color:#f59e0b; color:#000; }
@@ -107,6 +117,7 @@
         #setup-screen #error-msg { max-width:none; margin:0; min-height:18px; text-align:left; }
         #setup-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:14px; align-items:start; }
         @media (max-width:1100px) { #setup-grid { grid-template-columns:1fr; } }
+        @media (max-width:700px) { #drive-box { order:-1; } }      /* phones: the Drive source is the one you'll use, so it goes first */
         #setup-screen .panel { margin:0; width:auto; max-width:none; box-sizing:border-box; padding:14px; border:1px solid #333; border-radius:10px; background:#0a0a0a; text-align:center; }
         #setup-screen .panel h2 { font-size:.95rem; font-weight:600; margin:0 0 4px; }
         #setup-screen .panel .hint { color:#9ca3af; font-size:.78rem; margin-bottom:10px; }
@@ -141,7 +152,7 @@
 
     <div id="setup-screen">
         <div id="setup-top">
-            <h1>Arena V24</h1>
+            <h1>Arena V26</h1>
             <div id="stats"></div>
             <div id="btn-row">
                 <button id="back-btn" class="secondary">Back to Arena</button>
@@ -182,6 +193,44 @@
                         <button id="cb-watch-btn">📡 Watch these rooms only</button>
                     </div>
                 </div>
+            </div>
+
+            <div class="panel" id="drive-box">
+                <h2 style="color:#38bdf8;">☁ Google Drive</h2>
+                <div class="hint">Use a Drive folder (and its sub-folders) as a pool source. It streams straight from Drive, so it works on a phone too.</div>
+                <textarea id="drive-folders" class="short" placeholder="Paste one or more Drive folder links, one per line"></textarea>
+                <select id="drive-mode">
+                    <option value="key">Folder shared with “Anyone with the link” + API key</option>
+                    <option value="oauth">Private folder: sign in with Google</option>
+                </select>
+                <div id="drive-key-row"><input type="text" id="drive-key" placeholder="Google API key" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+                <div id="drive-client-row" style="display:none"><input type="text" id="drive-client" placeholder="OAuth Client ID (xxxx.apps.googleusercontent.com)" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+                <label class="chk"><input type="checkbox" id="drive-sub" checked> Include sub-folders</label>
+                <div class="btn-row">
+                    <button id="drive-load-btn">☁ Load folder(s)</button>
+                    <button id="drive-test-btn" class="secondary">Test connection</button>
+                </div>
+                <div id="drive-status"></div>
+                <details id="drive-help">
+                    <summary>How to set this up (one time)</summary>
+                    <b>Everyone: get a key</b>
+                    <ol>
+                        <li>Go to <code>console.cloud.google.com</code>, create a project, then <i>APIs &amp; Services → Library → Google Drive API → Enable</i>.</li>
+                        <li><i>Credentials → Create credentials → API key</i>. Under restrictions pick <i>API restrictions → Google Drive API</i> and leave <i>Application restrictions</i> on <b>None</b> (videos can't send a referrer, so a website restriction would block them).</li>
+                    </ol>
+                    <b>Simple mode (API key):</b>
+                    <ol>
+                        <li>In Drive, right-click the folder → <i>Share → General access → Anyone with the link → Viewer</i>. Copy the link.</li>
+                        <li>Paste the link and the key above, then <i>Load</i>. Anyone who has the folder link can open those files.</li>
+                    </ol>
+                    <b>Private mode (sign in):</b>
+                    <ol>
+                        <li><i>OAuth consent screen</i>: External, add your own Google account under <i>Test users</i>.</li>
+                        <li><i>Credentials → OAuth client ID → Web application</i>. Add the address you open Arena from (e.g. <code>https://yoursite.netlify.app</code>) under <i>Authorized JavaScript origins</i>. This does <b>not</b> work from a local file.</li>
+                        <li>Paste the Client ID above, choose <i>Private</i>, press <i>Sign in &amp; load</i>. Google warns the app is unverified: <i>Advanced → continue</i> (it is your own app).</li>
+                    </ol>
+                    <b>On your phone:</b> open Arena from a web address (for example drag the HTML file onto <code>app.netlify.com/drop</code>, or use GitHub Pages). Your keys are typed on the phone and never stored in the file.
+                </details>
             </div>
 
             <div class="panel" id="comic-box">
@@ -271,6 +320,7 @@
             <button id="fav-import-btn" title="Load favorites from an exported JSON file">⬆ Import</button>
             <input type="file" id="fav-import-file" accept=".json,application/json" style="display:none">
             <span id="folder-status" style="font-size:.75rem;color:#aaa"></span>
+            <button id="drive-reconnect" style="display:none" title="Your Google sign-in expired: tap to renew it">☁ Reconnect Drive</button>
             <span id="free-tools"><button id="free-add" title="Add a tile in the biggest free space (or double-click any empty space)">➕ Add tile</button><button id="free-reset" title="Re-create the free layout as a 3×2 grid">↺ Reset tiles</button></span>
             <button id="ctl-hide" title="Hide this bar so it can't cover anything (press H to bring it back)">🙈 Hide bar</button>
             <button id="reset-btn">← Add More HTML</button>
@@ -456,7 +506,7 @@
 
         const LOCAL_ANIM_RE = /\.(gif|mp4|webm|mov|m4v)$/i;
         const srcUrl = m => m._remoteUrl || m.url;      // the original link, even when a saved local copy is being displayed
-        function isAnimated(m) { return GIF_RE.test(srcUrl(m)) || VID_RE.test(srcUrl(m)) || LOCAL_ANIM_RE.test(m._local || '') || m._guess || m.isStream; }
+        function isAnimated(m) { return m._anim || m.isVideo || GIF_RE.test(srcUrl(m)) || VID_RE.test(srcUrl(m)) || LOCAL_ANIM_RE.test(m._local || '') || m._guess || m.isStream; }
 
         // ---------- LIVE STREAMS ----------
         // chaturbate.com/<name> pages can't be framed, but the site publishes an embed page for rooms
@@ -1405,7 +1455,7 @@
                 favorites.delete(item._key);
             } else {
                 if (purged.delete(item._key)) savePurged();
-                favorites.set(item._key, { url: item._remoteUrl || item.url, _raw: item._remoteUrl ? (item._raw || '') : (item._raw || item.raw || ''), _local: item._local || undefined, isVideo: item.isVideo, pageUrl: item.pageUrl, _key: item._key, _guess: !!item._guess, sprite: item.sprite || null, isStream: !!item.isStream, streamType: item.streamType || null, name: item.name || '' });
+                favorites.set(item._key, { url: item._remoteUrl || item.url, _raw: item._remoteUrl ? (item._raw || '') : (item._raw || item.raw || ''), _local: item._local || undefined, isVideo: item.isVideo, pageUrl: item.pageUrl, _key: item._key, _guess: !!item._guess, _gd: item._gd || undefined, _anim: item._anim || undefined, sprite: item.sprite || null, isStream: !!item.isStream, streamType: item.streamType || null, name: item.name || '' });
             }
             saveFavorites();
             if (FS_OK && !dirHandle && favorites.has(item._key)) setStatus(pendingHandle ? '⚠ save folder not connected: this favorite is only kept as a link. Click 📁 Reconnect folder.' : '⚠ no save folder set: this favorite is only kept as a link. Click 📁 Save folder to keep files.');
@@ -1660,6 +1710,207 @@
                 updateStats();
             }
         }
+
+        // ================= GOOGLE DRIVE SOURCE =================
+        const DRIVE_API = 'https://www.googleapis.com/drive/v3';
+        const drivePrefs = Object.assign({ folders: '', key: '', client: '', mode: 'key', sub: true }, loadJSON('arenaDriveV1', {}));
+        const driveSt = { token: '', exp: 0, tc: null, tcClient: '', timer: null, done: null };
+        const driveEls = { folders: $('drive-folders'), key: $('drive-key'), client: $('drive-client'), mode: $('drive-mode'), sub: $('drive-sub'), status: $('drive-status') };
+        driveEls.folders.value = drivePrefs.folders; driveEls.key.value = drivePrefs.key; driveEls.client.value = drivePrefs.client; driveEls.mode.value = drivePrefs.mode; driveEls.sub.checked = !!drivePrefs.sub;
+        function readDriveForm() {
+            drivePrefs.folders = driveEls.folders.value; drivePrefs.key = driveEls.key.value.trim(); drivePrefs.client = driveEls.client.value.trim();
+            drivePrefs.mode = driveEls.mode.value; drivePrefs.sub = driveEls.sub.checked;
+            saveJSON('arenaDriveV1', drivePrefs);
+        }
+        function driveStatus(msg, bad) { driveEls.status.textContent = msg; driveEls.status.style.color = bad ? '#f87171' : '#9ca3af'; }
+        function syncDriveUi() {
+            const priv = driveEls.mode.value === 'oauth';
+            $('drive-key-row').style.display = priv ? 'none' : ''; $('drive-client-row').style.display = priv ? '' : 'none';
+            $('drive-load-btn').textContent = priv ? '☁ Sign in & load' : '☁ Load folder(s)';
+        }
+        driveEls.mode.addEventListener('change', () => { readDriveForm(); syncDriveUi(); if (drivePrefs.mode === 'oauth') loadGis().catch(() => {}); });
+        syncDriveUi();
+
+        // credentials for the media links: <img>/<video> can't send headers, so the key (or token) rides in the URL
+        function driveAuthParam() {
+            if (drivePrefs.mode === 'oauth') return driveSt.token ? 'access_token=' + encodeURIComponent(driveSt.token) : '';
+            return drivePrefs.key ? 'key=' + encodeURIComponent(drivePrefs.key) : '';
+        }
+        const driveMediaUrl = id => DRIVE_API + '/files/' + id + '?alt=media&' + driveAuthParam();
+        function applyDriveAuth() {          // re-point every Drive item (pool and favorites) at the current key / token
+            if (!driveAuthParam()) return;
+            const fix = it => { if (it && it._gd) { it.url = driveMediaUrl(it._gd); it._raw = it.url; } };
+            mediaPool.forEach(fix); favorites.forEach(fix); favPool.forEach(fix);
+        }
+
+        function parseDriveIds(text) {
+            const ids = [];
+            String(text || '').split(/[\s,]+/).forEach(tok => {
+                if (!tok) return;
+                const m = tok.match(/\/folders\/([-\w]{10,})/) || tok.match(/[?&]id=([-\w]{10,})/) || (/^[-\w]{20,}$/.test(tok) ? [null, tok] : null);
+                if (m && !ids.includes(m[1])) ids.push(m[1]);
+            });
+            return ids;
+        }
+        function driveError(status, msg, reason) {
+            const priv = drivePrefs.mode === 'oauth';
+            const m = String(msg || ''), r = String(reason || '');
+            const google = m ? ` Google says: "${m}"${r ? ' [' + r + ']' : ''}.` : '';
+            let t;
+            if (/SERVICE_DISABLED/.test(r) || /has not been used|is disabled/i.test(m)) t = 'The Google Drive API is not enabled for the project this key belongs to. In Google Cloud Console open that same project → APIs & Services → Library → Google Drive API → Enable.' + google;
+            else if (/API_KEY_SERVICE_BLOCKED/.test(r) || /are blocked/i.test(m) && !/referer|referrer/i.test(m)) t = "This API key is restricted to other APIs. Edit the key → API restrictions → tick Google Drive API (or temporarily choose 'Don't restrict key'). Changes can take a few minutes." + google;
+            else if (/REFERRER|REFERER|IP_ADDRESS|ANDROID|IOS_APP/.test(r) || /referer|referrer/i.test(m)) t = "The key has an application restriction (website / IP / app). Edit the key → Application restrictions → None." + google;
+            else if (/API_KEY_INVALID/.test(r) || /API key not valid/i.test(m)) t = 'Google says this API key is not valid. Re-copy it from Credentials, with no extra characters.' + google;
+            else if (status === 400) t = `Google rejected the request. Check the folder link and the ${priv ? 'Client ID' : 'API key'}.` + google;
+            else if (status === 401) t = 'Your Google sign-in is missing or expired. Press "Sign in & load" again.';
+            else if (status === 403) t = priv ? 'Access denied. The signed-in account can\'t open that folder, or the Drive API isn\'t enabled for your project.' + google
+                : 'Access denied, which usually means a key/project setting rather than the folder: (1) the Drive API must be enabled in the same project the key was created in, (2) the key\'s API restriction must include Google Drive API, (3) its application restriction must be None. If all three are right, check the folder is shared as "Anyone with the link".' + google;
+            else if (status === 404) t = 'Folder not found. Check the link' + (priv ? '.' : ', and that it is shared with "Anyone with the link".') + google;
+            else if (status === 429) t = 'Google is rate limiting this key. Wait a minute and try again.';
+            else t = `Google returned error ${status}.` + google;
+            const e = new Error(t); e.status = status; return e;
+        }
+        async function driveGet(pathAndQuery) {
+            const priv = drivePrefs.mode === 'oauth';
+            const url = DRIVE_API + pathAndQuery + (priv ? '' : '&key=' + encodeURIComponent(drivePrefs.key));
+            let res;
+            try { res = await fetch(url, priv ? { headers: { Authorization: 'Bearer ' + driveSt.token } } : {}); }
+            catch (e) { throw new Error('Could not reach Google (offline, or the request was blocked).'); }
+            if (!res.ok) {
+                let msg = '', reason = '';
+                try { const j = await res.json(); const er = j.error || {}; msg = er.message || ''; reason = ((er.details || []).find(d => d && d.reason) || {}).reason || ((er.errors || [])[0] || {}).reason || er.status || ''; } catch (e) {}
+                throw driveError(res.status, msg, reason);
+            }
+            return res.json();
+        }
+        async function driveScan(rootIds, sub, onProgress) {
+            const files = [], seen = new Set(rootIds), queue = rootIds.slice();
+            let folders = 0;
+            const fields = encodeURIComponent('nextPageToken,files(id,name,mimeType,imageMediaMetadata(width,height),videoMediaMetadata(width,height))');
+            while (queue.length && folders < 2000) {
+                const id = queue.shift(); folders++;
+                let page = '';
+                do {
+                    const q = `'${id}' in parents and trashed=false and (mimeType contains 'image/' or mimeType contains 'video/'${sub ? " or mimeType='application/vnd.google-apps.folder'" : ''})`;
+                    const data = await driveGet(`/files?q=${encodeURIComponent(q)}&pageSize=1000&fields=${fields}&supportsAllDrives=true&includeItemsFromAllDrives=true${page ? '&pageToken=' + encodeURIComponent(page) : ''}`);
+                    (data.files || []).forEach(f => {
+                        if (f.mimeType === 'application/vnd.google-apps.folder') { if (!seen.has(f.id)) { seen.add(f.id); queue.push(f.id); } }
+                        else files.push(f);
+                    });
+                    page = data.nextPageToken || '';
+                    onProgress(files.length, folders);
+                } while (page);
+            }
+            return files;
+        }
+        function driveItem(f) {
+            const mime = f.mimeType || '';
+            if (!/^(image|video)\//.test(mime) || /svg/.test(mime)) return null;
+            const isVideo = mime.startsWith('video/');
+            const url = driveMediaUrl(f.id);
+            const md = f.videoMediaMetadata || f.imageMediaMetadata;
+            const it = { url, _raw: url, isVideo, _anim: isVideo || mime === 'image/gif', pageUrl: 'https://drive.google.com/file/d/' + f.id + '/view', _key: 'gdrive:' + f.id, _guess: false, _tried: [], sprite: null, name: f.name || '', _gd: f.id, _batches: [] };
+            if (md && md.width && md.height) it._dim = { w: md.width, h: md.height };
+            return it;
+        }
+
+        // ---- Sign in with Google (private mode) ----
+        function loadGis() {
+            return new Promise((resolve, reject) => {
+                if (window.google && google.accounts && google.accounts.oauth2) return resolve();
+                const el = document.createElement('script');
+                el.src = 'https://accounts.google.com/gsi/client'; el.async = true;
+                el.onload = () => resolve();
+                el.onerror = () => reject(new Error('Could not load Google sign-in (offline or blocked).'));
+                document.head.appendChild(el);
+            });
+        }
+        function driveSignIn(interactive) {
+            return loadGis().then(() => new Promise((resolve, reject) => {
+                if (!drivePrefs.client) return reject(new Error('Paste your OAuth Client ID first.'));
+                if (!driveSt.tc || driveSt.tcClient !== drivePrefs.client) {
+                    driveSt.tcClient = drivePrefs.client;
+                    driveSt.tc = google.accounts.oauth2.initTokenClient({
+                        client_id: drivePrefs.client,
+                        scope: 'https://www.googleapis.com/auth/drive.readonly',
+                        callback: r => { if (driveSt.done) driveSt.done(r); },
+                        error_callback: err => { if (driveSt.done) driveSt.done({ error: (err && (err.message || err.type)) || 'sign-in was cancelled' }); }
+                    });
+                }
+                driveSt.done = r => {
+                    driveSt.done = null;
+                    if (!r || r.error || !r.access_token) return reject(new Error('Google sign-in failed: ' + ((r && (r.error_description || r.error)) || 'no token')));
+                    driveSt.token = r.access_token; driveSt.exp = Date.now() + (parseInt(r.expires_in, 10) || 3600) * 1000;
+                    applyDriveAuth();
+                    mediaPool.forEach(it => { if (it._gd) failed.delete(it._key); });      // anything that failed because the old token ran out may work again
+                    $('drive-reconnect').style.display = 'none';
+                    scheduleDriveRefresh();
+                    resolve();
+                };
+                driveSt.tc.requestAccessToken({ prompt: interactive ? '' : 'none' });
+            }));
+        }
+        function scheduleDriveRefresh() {          // tokens last about an hour: renew quietly, or show a Reconnect button
+            clearTimeout(driveSt.timer);
+            const ms = Math.max(60000, driveSt.exp - Date.now() - 5 * 60000);
+            driveSt.timer = setTimeout(() => { driveSignIn(false).catch(() => { $('drive-reconnect').style.display = 'inline-block'; }); }, ms);
+        }
+        $('drive-reconnect').addEventListener('click', () => { driveSignIn(true).catch(e => alert(e.message)); });
+
+        let driveBusy = false;
+        async function loadDrive() {
+            if (driveBusy) return;
+            driveBusy = true; const btn = $('drive-load-btn'); btn.disabled = true; errorMsg.textContent = '';
+            try {
+                readDriveForm();
+                const ids = parseDriveIds(drivePrefs.folders);
+                if (!ids.length) throw new Error('Paste at least one Drive folder link first.');
+                if (drivePrefs.mode === 'oauth') { driveStatus('Waiting for Google sign-in…'); await driveSignIn(true); }
+                else if (!drivePrefs.key) throw new Error('Paste your Google API key first.');
+                driveStatus('Scanning…');
+                const names = await Promise.all(ids.map(id => driveGet(`/files/${id}?fields=name&supportsAllDrives=true`).then(r => r.name).catch(() => null)));
+                const files = await driveScan(ids, drivePrefs.sub, (n, f) => driveStatus(`Scanning… ${n.toLocaleString()} files in ${f} folder${f === 1 ? '' : 's'}`));
+                const items = files.map(driveItem).filter(Boolean);
+                if (!items.length) throw new Error('No images or videos found in that folder' + (drivePrefs.sub ? ' or its sub-folders' : '') + '.');
+                let filteredOut = 0, already = 0, added = 0;
+                const batchId = ++batchSeq, pending = [];
+                items.forEach(it => {
+                    if (isFiltered(it._key)) { filteredOut++; return; }
+                    const ex = poolMap.get(it._key);
+                    if (ex) { already++; pending.push(ex); return; }
+                    poolMap.set(it._key, it); mediaPool.push(it); pending.push(it); added++;
+                });
+                if (!added) { batchSeq--; throw new Error(`Nothing new: ${items.length.toLocaleString()} files found, ${filteredOut.toLocaleString()} already skipped, ${already.toLocaleString()} already in the pool.`); }
+                pending.forEach(it => { if (!it._batches.includes(batchId)) it._batches.push(batchId); });
+                const stamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const nm = names.filter(Boolean).join(', ') || 'Drive folder';
+                batches.push({ id: batchId, label: `#${batchId} · ${stamp} · ☁ ${nm.slice(0, 40)} (${added.toLocaleString()})` });
+                renderBatches();
+                driveStatus(`Added ${added.toLocaleString()} new file${added === 1 ? '' : 's'} from ${files.length.toLocaleString()} found` + (filteredOut ? `, ${filteredOut.toLocaleString()} already skipped` : '') + '.');
+                enterArenaAfterLoad();
+            } catch (e) { driveStatus(e.message, true); }
+            finally { driveBusy = false; btn.disabled = false; }
+        }
+        async function testDrive() {
+            readDriveForm();
+            try {
+                const ids = parseDriveIds(drivePrefs.folders);
+                if (!ids.length) throw new Error('Paste a Drive folder link first.');
+                if (drivePrefs.mode === 'oauth') { driveStatus('Waiting for Google sign-in…'); await driveSignIn(true); }
+                else if (!drivePrefs.key) throw new Error('Paste your Google API key first.');
+                driveStatus('Testing…');
+                const data = await driveGet(`/files?q=${encodeURIComponent(`'${ids[0]}' in parents and trashed=false`)}&pageSize=20&fields=${encodeURIComponent('files(id,name,mimeType)')}&supportsAllDrives=true&includeItemsFromAllDrives=true`);
+                const list = data.files || [];
+                const media = list.map(driveItem).find(Boolean);
+                if (!media) { driveStatus(list.length ? `✅ Folder readable (${list.length} entries here) but no image/video at its top level: sub-folders are scanned when you press Load.` : '✅ Connected, but the folder looks empty.'); return; }
+                const ok = await probe(media.url, media.isVideo);
+                driveStatus(ok === true ? `✅ Connected. The folder is readable and "${media.name}" loads fine.` : `⚠ The folder lists fine, but downloading "${media.name}" ${ok === null ? 'timed out' : 'failed'}. For a shared folder check the key's API restriction; the file's download quota may also be used up.`, ok !== true);
+            } catch (e) { driveStatus(e.message, true); }
+        }
+        $('drive-load-btn').addEventListener('click', loadDrive);
+        $('drive-test-btn').addEventListener('click', testDrive);
+        if (drivePrefs.mode === 'key' && drivePrefs.key) applyDriveAuth();      // favorites from Drive work straight away
+        if (drivePrefs.mode === 'oauth' && drivePrefs.client) loadGis().catch(() => {});
 
         // ---------- LIVE STREAM BUTTONS ----------
         const streamInput = $('stream-input');
@@ -2748,6 +2999,7 @@
         arenaScreen.appendChild(ctlShow);
         function setControlsHidden(h) { controlsBar.classList.toggle('hidden', h); ctlShow.style.display = h ? 'block' : 'none'; }
         $('ctl-hide').addEventListener('click', () => setControlsHidden(true));
+        if (window.matchMedia && matchMedia('(hover: none) and (pointer: coarse)').matches) setControlsHidden(true);      // phones: tap ☰ Controls when you need the bar
         ctlShow.addEventListener('click', () => setControlsHidden(false));
 
         window.addEventListener('keydown', e => {
