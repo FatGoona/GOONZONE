@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="referrer" content="no-referrer">
-    <title>Dynamic Fullscreen Arena V27</title>
+    <title>Dynamic Fullscreen Arena V28</title>
     <style>
         body, html { background:#000; color:#fff; font-family:sans-serif; margin:0; padding:0; width:100vw; height:100vh; overflow:hidden; }
         #setup-screen { display:flex; flex-direction:column; align-items:center; justify-content:flex-start; height:100vh; width:100vw; overflow-y:auto; padding:24px 0; box-sizing:border-box; }
@@ -31,29 +31,37 @@
         .cell.cover img, .cell.cover video, .cell.cover canvas { object-fit:cover; }
         .cell iframe { width:100%; height:100%; border:0; background:#000; }
         .cell-actions.always { opacity:.9; }
-        .free-handle { position:absolute; top:0; left:0; right:0; height:22px; z-index:9; display:flex; align-items:center; justify-content:space-between; padding:0 4px 0 8px; background:linear-gradient(rgba(0,0,0,.7), rgba(0,0,0,0)); color:#fff; font-size:.72rem; cursor:move; opacity:.3; transition:opacity .15s ease; touch-action:none; user-select:none; }
-        .cell:hover .free-handle, .free-handle:hover { opacity:1; }
+        .free-handle { position:absolute; top:0; left:0; right:0; height:22px; z-index:9; display:flex; align-items:center; justify-content:space-between; padding:0 4px 0 8px; background:linear-gradient(rgba(0,0,0,.7), rgba(0,0,0,0)); color:#fff; font-size:.72rem; cursor:move; opacity:0; transition:opacity .15s ease; touch-action:none; user-select:none; }
+        @media (hover:hover) { .cell:hover .free-handle, .free-handle:hover { opacity:.9; } }
         .free-x { cursor:pointer; padding:1px 7px; border-radius:3px; }
         .free-x:hover { background:#b91c1c; }
-        .free-rz { position:absolute; z-index:9; touch-action:none; }
-        .free-rz[data-dir="n"] { top:0; left:14px; right:14px; height:6px; cursor:ns-resize; }
-        .free-rz[data-dir="s"] { bottom:0; left:14px; right:14px; height:6px; cursor:ns-resize; }
-        .free-rz[data-dir="w"] { left:0; top:14px; bottom:14px; width:6px; cursor:ew-resize; }
-        .free-rz[data-dir="e"] { right:0; top:14px; bottom:14px; width:6px; cursor:ew-resize; }
-        .free-rz[data-dir="nw"] { top:0; left:0; width:14px; height:14px; cursor:nwse-resize; }
-        .free-rz[data-dir="se"] { bottom:0; right:0; width:14px; height:14px; cursor:nwse-resize; }
-        .free-rz[data-dir="ne"] { top:0; right:0; width:14px; height:14px; cursor:nesw-resize; }
-        .free-rz[data-dir="sw"] { bottom:0; left:0; width:14px; height:14px; cursor:nesw-resize; }
-        .free-rz[data-dir="se"]::after { content:""; position:absolute; right:3px; bottom:3px; width:7px; height:7px; border-right:2px solid rgba(255,255,255,.55); border-bottom:2px solid rgba(255,255,255,.55); }
-        #free-tools { display:none; gap:6px; align-items:center; }
+        .cell.dragging { opacity:.4; }
+        .tile-div { position:absolute; z-index:8; touch-action:none; }
+        .tile-div.v { width:10px; margin-left:-5px; cursor:col-resize; }
+        .tile-div.h { height:10px; margin-top:-5px; cursor:row-resize; }
+        .tile-div::after { content:""; position:absolute; background:rgba(56,189,248,0); transition:background .12s; }
+        .tile-div.v::after { left:4px; right:4px; top:0; bottom:0; }
+        .tile-div.h::after { top:4px; bottom:4px; left:0; right:0; }
+        .tile-div:hover::after, .tile-div.act::after { background:rgba(56,189,248,.85); }
+        #dock-zone { position:absolute; z-index:30; pointer-events:none; border:2px dashed #38bdf8; background:rgba(56,189,248,.22); box-sizing:border-box; display:none; }
+        .cell-dot { display:none; position:absolute; top:50%; right:8px; margin-top:-16px; z-index:9; width:32px; height:32px; border-radius:50%; background:rgba(0,0,0,.55); color:#fff; align-items:center; justify-content:center; font-size:1.1rem; line-height:1; border:1px solid rgba(255,255,255,.35); touch-action:manipulation; user-select:none; }
+        #free-tools { display:inline-flex; gap:6px; align-items:center; }
         #free-toast { position:absolute; left:50%; bottom:60px; transform:translateX(-50%); z-index:40; background:rgba(0,0,0,.9); color:#fff; border:1px solid #666; padding:8px 14px; border-radius:6px; font-size:.85rem; display:none; pointer-events:none; }
-        #drive-box input[type=text], #drive-box select { width:100%; box-sizing:border-box; background:#111; color:#fff; border:1px solid #333; border-radius:6px; padding:9px; margin:0 0 8px; font-size:.85rem; }
+        #drive-box input[type=text], #drive-box select, #cloud-box input[type=text] { width:100%; box-sizing:border-box; background:#111; color:#fff; border:1px solid #333; border-radius:6px; padding:9px; margin:0 0 8px; font-size:.85rem; }
         #drive-box textarea { height:70px !important; min-height:60px !important; }
-        #drive-box label.chk { display:flex; align-items:center; gap:6px; color:#9ca3af; font-size:.8rem; justify-content:center; margin:2px 0 8px; }
+        #cloud-box label.chk, #drive-box label.chk { display:flex; align-items:center; gap:6px; color:#9ca3af; font-size:.8rem; justify-content:center; margin:2px 0 8px; }
         #drive-status { min-height:18px; font-size:.8rem; margin-top:8px; color:#9ca3af; }
         #drive-help { text-align:left; color:#9ca3af; font-size:.76rem; margin-top:10px; }
         #drive-help summary { cursor:pointer; color:#38bdf8; }
         #drive-help ol { margin:6px 0 6px 18px; padding:0; } #drive-help li { margin:3px 0; } #drive-help code { background:#1a1a1a; padding:1px 4px; border-radius:3px; }
+        #drive-banner { position:fixed; left:50%; transform:translateX(-50%); bottom:56px; z-index:35; width:min(92vw,560px); box-sizing:border-box; background:rgba(60,35,5,.96); color:#fde68a; border:1px solid #f59e0b; border-radius:8px; padding:10px 12px; font-size:.82rem; display:none; }
+        #drive-banner .row { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+        #drive-banner button { background:#1f1f1f; color:#fff; border:1px solid #666; border-radius:5px; padding:6px 10px; font-size:.78rem; cursor:pointer; }
+        #drive-diag { position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.88); display:none; align-items:center; justify-content:center; padding:12px; box-sizing:border-box; }
+        #drive-diag .card { background:#0d0d0d; border:1px solid #444; border-radius:10px; width:min(96vw,720px); max-height:92vh; display:flex; flex-direction:column; padding:12px; box-sizing:border-box; }
+        #drive-diag pre { flex:1; overflow:auto; margin:0 0 10px; white-space:pre-wrap; word-break:break-word; font:12px/1.45 ui-monospace,Menlo,Consolas,monospace; color:#d1d5db; max-height:70vh; }
+        #drive-diag .row { display:flex; gap:8px; }
+        #drive-diag button { background:#1f1f1f; color:#fff; border:1px solid #555; border-radius:6px; padding:8px 12px; font-size:.85rem; cursor:pointer; }
         #stream-layer { position:absolute; inset:0; z-index:3; pointer-events:none; }       /* embedded streams live here, so rebuilding the tiles never reloads them */
         .stream-frame { position:absolute; display:none; overflow:hidden; background:#000; pointer-events:auto; }
         .stream-frame iframe { position:absolute; inset:0; width:100%; height:100%; border:0; background:#000; transform-origin:0 0; }
@@ -66,7 +74,8 @@
         .crop-panel button { background:#222; color:#fff; border:1px solid #555; padding:4px 8px; font-size:.75rem; font-weight:normal; border-radius:4px; cursor:pointer; }
         .crop-panel button:hover { background:#3b82f6; border-color:#3b82f6; }
         .save-badge { position:absolute; bottom:6px; left:8px; z-index:6; font-size:.7rem; line-height:1.2; padding:3px 7px; border-radius:4px; cursor:default; opacity:.55; transition:opacity .2s ease; border:1px solid transparent; }
-        .cell:hover .save-badge { opacity:1; }
+        @media (hover:hover) { .cell:hover .save-badge { opacity:1; } }
+        .save-badge.cloud { background:rgba(7,89,133,.92); color:#e0f2fe; border-color:#38bdf8; }
         .save-badge.ok { background:rgba(22,101,52,.92); color:#dcfce7; border-color:#22c55e; }
         .save-badge.pend { background:rgba(0,0,0,.8); color:#ddd; border-color:#666; }
         .save-badge.warn, .save-badge.bad { background:rgba(120,53,15,.95); color:#fef3c7; border-color:#f59e0b; cursor:pointer; opacity:.9; }
@@ -77,8 +86,19 @@
         .cell.target { outline:3px solid #f59e0b; outline-offset:-3px; }
         .cell-actions { position:absolute; bottom:44px; left:8px; right:8px; display:flex; flex-direction:row; flex-wrap:wrap; align-items:flex-end; justify-content:flex-start; gap:4px; z-index:5; opacity:0; transition:opacity .2s ease; pointer-events:none; }
         .cell-actions a, .cell-actions button { pointer-events:auto; white-space:nowrap; }
-        .cell:hover .cell-actions { opacity:1; }
-        @media (hover:none) { .cell-actions { opacity:.92; } .cell-actions a, .cell-actions button { padding:6px 10px; font-size:.78rem; } .free-handle { opacity:.8; } .save-badge { opacity:.9; } }      /* touch screens have no hover: keep each tile's buttons visible */
+        @media (hover:hover) { .cell:hover .cell-actions { opacity:1; } }
+        @media (hover:none) {      /* touch screens have no hover: tiles stay clean, tap the small ⋯ dot to show that tile's buttons (tapping the tile itself still skips) */
+            .cell-dot { display:flex; opacity:.6; }
+            .cell-actions, .save-badge, .free-handle { opacity:0; }
+            .cell-actions a, .cell-actions button { padding:6px 10px; font-size:.78rem; pointer-events:none; }
+            .cell.reveal .cell-actions { opacity:.95; }
+            .cell.reveal .cell-actions a, .cell.reveal .cell-actions button { pointer-events:auto; }
+            .cell.reveal .save-badge { opacity:.95; }
+            .cell.reveal .free-handle { opacity:.9; }
+            .cell.reveal .cell-dot { opacity:1; background:#2563eb; }
+            .tile-div.v { width:18px; margin-left:-9px; } .tile-div.h { height:18px; margin-top:-9px; }
+            .tile-div.v::after { left:7px; right:7px; } .tile-div.h::after { top:7px; bottom:7px; }
+        }
         #grid-container { touch-action:manipulation; }
         .cell-actions a, .cell-actions button { background:rgba(0,0,0,.85); color:#fff; border:1px solid #555; padding:4px 8px; font-size:.72rem; line-height:1.2; font-weight:normal; border-radius:4px; text-decoration:none; cursor:pointer; }
         .cell-actions a:hover, .cell-actions button:hover { background:#3b82f6; border-color:#3b82f6; }
@@ -117,7 +137,7 @@
         #setup-screen #error-msg { max-width:none; margin:0; min-height:18px; text-align:left; }
         #setup-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:14px; align-items:start; }
         @media (max-width:1100px) { #setup-grid { grid-template-columns:1fr; } }
-        @media (max-width:700px) { #drive-box { order:-1; } }      /* phones: the Drive source is the one you'll use, so it goes first */
+        @media (max-width:700px) { #cloud-box { order:-2; } #drive-box { order:-1; } }      /* phones: the Drive source is the one you'll use, so it goes first */
         #setup-screen .panel { margin:0; width:auto; max-width:none; box-sizing:border-box; padding:14px; border:1px solid #333; border-radius:10px; background:#0a0a0a; text-align:center; }
         #setup-screen .panel h2 { font-size:.95rem; font-weight:600; margin:0 0 4px; }
         #setup-screen .panel .hint { color:#9ca3af; font-size:.78rem; margin-bottom:10px; }
@@ -152,7 +172,7 @@
 
     <div id="setup-screen">
         <div id="setup-top">
-            <h1>Arena V27</h1>
+            <h1>Arena V28</h1>
             <div id="stats"></div>
             <div id="btn-row">
                 <button id="back-btn" class="secondary">Back to Arena</button>
@@ -195,6 +215,25 @@
                 </div>
             </div>
 
+            <div class="panel" id="cloud-box">
+                <h2 style="color:#22d3ee;">☁ Cloud favorites</h2>
+                <div class="hint">Your favorites folder, kept in a cloud bucket (Backblaze B2). Paste the manifest link once and the same favorites show up on any device, nothing to download or sign into.</div>
+                <input type="text" id="cloud-url" placeholder="Manifest link (https://…/m-xxxxxxxxxxxxxxxx.json)" autocomplete="off" autocapitalize="off" spellcheck="false">
+                <div class="btn-row">
+                    <button id="cloud-load-btn">☁ Load cloud favorites</button>
+                    <button id="cloud-forget-btn" class="secondary">Remove cloud favorites</button>
+                </div>
+                <div id="cloud-status" class="hint"></div>
+                <details><summary>How to set this up (one time)</summary>
+                    <ol>
+                        <li>Create a free Backblaze B2 bucket (public), add the CORS rule, upload your <code>favorites</code> folder. The step-by-step is in <code>SETUP.txt</code>.</li>
+                        <li>Run <code>make_manifest.py</code> on your Arena save folder, upload the <code>m-….json</code> it creates along with the files.</li>
+                        <li>Paste the manifest's web address above and press Load. It is remembered, and re-read every time Arena opens, so new uploads appear on their own.</li>
+                    </ol>
+                    <div class="hint">The manifest has an unguessable name: anyone who has the link can see the list, so keep it private. Cloud favorites aren't copied into your local folder.</div>
+                </details>
+            </div>
+
             <div class="panel" id="drive-box">
                 <h2 style="color:#38bdf8;">☁ Google Drive</h2>
                 <div class="hint">Use a Drive folder (and its sub-folders) as a pool source. It streams straight from Drive, so it works on a phone too.</div>
@@ -209,6 +248,7 @@
                 <div class="btn-row">
                     <button id="drive-load-btn">☁ Load folder(s)</button>
                     <button id="drive-test-btn" class="secondary">Test connection</button>
+                    <button id="drive-diag-btn" class="secondary" title="Tests a few of your Drive files two different ways and shows exactly what Google answers">🩺 Diagnose media loading</button>
                     <button id="drive-link-btn" class="secondary" title="Copies a link that fills in these settings on another device, so you never have to type the key on a phone">📱 Copy phone link</button>
                 </div>
                 <div id="drive-status"></div>
@@ -270,7 +310,6 @@
             <button id="dojin-btn" title="Resume reading your dojin in the spotlight">📖 Dojin</button>
             <button id="pick-btn" title="Choose which video or stream goes in which spot (V)">📺 Pick</button>
             <select id="layout-select" title="Layout">
-                <option value="free">Free: drag &amp; resize tiles</option>
                 <option value="spot1">Spotlight ×1 (native size)</option>
                 <option value="spot2">Spotlight ×2 (native size)</option>
                 <option value="spot3">Spotlight ×3 (native size)</option>
@@ -288,7 +327,8 @@
                 <option value="3x3">Grid 3×3</option>
                 <option value="4x3">Grid 4×3</option>
                 <option value="4x4">Grid 4×4</option>
-                <option value="2x1">Grid 2×1</option>
+                <option value="2x1">Grid 2×1 (side by side)</option>
+                <option value="1x2">Grid 1×2 (stacked)</option>
                 <option value="1x1">Single 1×1</option>
             </select>
             <select id="cam-ar" style="display:none" title="Shape of the cam spots">
@@ -322,7 +362,7 @@
             <input type="file" id="fav-import-file" accept=".json,application/json" style="display:none">
             <span id="folder-status" style="font-size:.75rem;color:#aaa"></span>
             <button id="drive-reconnect" style="display:none" title="Your Google sign-in expired: tap to renew it">☁ Reconnect Drive</button>
-            <span id="free-tools"><button id="free-add" title="Add a tile in the biggest free space (or double-click any empty space)">➕ Add tile</button><button id="free-reset" title="Re-create the free layout as a 3×2 grid">↺ Reset tiles</button></span>
+            <span id="free-tools"><button id="free-add" title="Add a tile: splits the biggest tile in two">➕ Tile</button><button id="free-reset" title="Put this layout back to its default arrangement">↺ Reset layout</button></span>
             <button id="ctl-hide" title="Hide this bar so it can't cover anything (press H to bring it back)">🙈 Hide bar</button>
             <button id="reset-btn">← Add More HTML</button>
         </div>
@@ -373,8 +413,21 @@
         const purged = new Set(loadJSON('arenaPurgedV1', []));        // favorites you purged: they stay gone even if an old export / folder file still lists them
         const savePurged = () => saveJSON('arenaPurgedV1', [...purged]);
         const favorites = new Map(loadJSON('arenaFavoritesV1', []).map(f => [f._key, f]));
-        const prefs = Object.assign({ layout: window.innerWidth > 1024 ? '3x2' : '2x3', fit: 'contain', fitSpot: 'cover', volume: 0.7, camAR: '16:9', dojinCams: 0, camOnly: true, mixFavs: false, stillMix: 'med' }, loadJSON('arenaPrefsV1', {}));
+        const prefs = Object.assign({ layout: window.innerWidth > 1024 ? '3x2' : (window.innerWidth < 600 ? '1x2' : '2x3'), fit: 'contain', fitSpot: 'cover', volume: 0.7, camAR: '16:9', dojinCams: 0, camOnly: true, mixFavs: false, stillMix: 'med' }, loadJSON('arenaPrefsV1', {}));
         if (prefs.layout === 'spot') prefs.layout = 'spot1';
+        // Tiling boards: your edited arrangement of a layout, remembered per layout and screen shape ("3x2|Ld" = 3x2 on a desktop-sized landscape screen)
+        let nodeSeq = 0;
+        let boards = loadJSON('arenaBoardV1', {});
+        (function cleanBoards() { Object.keys(boards).forEach(k => { if (!validTree(boards[k], 0)) delete boards[k]; else reid(boards[k]); }); })();
+        if (prefs.layout === 'free') {      // the old loose-tile layout: carry the arrangement over as an edited 3x2
+            prefs.layout = '3x2';
+            const old = loadJSON('arenaFreeV1', null);
+            if (Array.isArray(old) && old.length) {
+                const t = treeFromRects(old.map((r, i) => ({ x: r[0], y: r[1], w: r[2], h: r[3], slot: i })), 0.004);
+                if (t) { boards[boardKey()] = reid(t); saveJSON('arenaBoardV1', boards); }
+            }
+            saveJSON('arenaPrefsV1', prefs);
+        }
 
         const saveDismissed = () => { saveJSON('arenaDismissedV1', [...dismissed]); folderDirty(); };
         const saveFavorites = () => { saveJSON('arenaFavoritesV1', [...favorites.values()]); folderDirty(); };
@@ -382,7 +435,7 @@
         const isFiltered = key => dismissed.has(key) || failed.has(key);
         const P = () => (viewMode === 'favs' ? favPool : mediaPool);
 
-        const LAYOUTS = { '3x2':[3,2], '2x3':[2,3], '2x2':[2,2], '3x3':[3,3], '4x3':[4,3], '4x4':[4,4], '2x1':[2,1], '1x1':[1,1] };
+        const LAYOUTS = { '3x2':[3,2], '2x3':[2,3], '2x2':[2,2], '3x3':[3,3], '4x3':[4,3], '4x4':[4,4], '2x1':[2,1], '1x2':[1,2], '1x1':[1,1] };
         // Each spotlight slot is one of: 'media' (native-size item), 'cam' (a live stream in a fixed-shape spot) or 'comic' (the dojin page)
         const HERO_KINDS = {
             spot1: ['media'], spot2: ['media', 'media'], spot3: ['media', 'media', 'media'],
@@ -390,12 +443,12 @@
             cam1spot1: ['cam', 'media'], spot1cam1: ['media', 'cam'], cam2spot1: ['cam', 'cam', 'media']
         };
         // An open dojin takes slot 0 (and can bring up to two cam spots) without touching your saved layout
-        const heroKinds = () => (comic.on ? ['comic', ...Array(Math.min(2, prefs.dojinCams | 0)).fill('cam')] : (HERO_KINDS[prefs.layout] || []));
+        const heroKinds = () => (comic.on ? ['comic', ...Array(Math.min(2, prefs.dojinCams | 0)).fill('cam')] : (boardTree() ? [] : (HERO_KINDS[prefs.layout] || [])));      // an edited board is just tiles: no native-size spots
         const isSpot = () => heroKinds().length > 0;
         const heroCount = () => heroKinds().length;
         const slotKind = pos => heroKinds()[pos] || null;
         const hasCam = () => heroKinds().includes('cam');
-        const streamsCamOnly = () => prefs.camOnly && !isFree() && !(viewMode === 'favs' && favSource === 'streams');
+        const streamsCamOnly = () => prefs.camOnly && !boardTree() && !(viewMode === 'favs' && favSource === 'streams');
         const camRatio = () => { const [a, b] = String(prefs.camAR || '16:9').split(':').map(Number); return a > 0 && b > 0 ? a / b : 16 / 9; };
         const curFit = () => (isSpot() ? prefs.fitSpot : prefs.fit);
         const comic = { on: false, pages: [], index: 0, title: '', id: '' };
@@ -435,6 +488,7 @@
         }
         // After a failed load: the next URL worth trying (the page's original link, then that link without its query)
         function nextFallback(item) {
+            if (item._gd) return null;            // Drive links carry the key in the query string: stripping it can never help
             const raw = item._raw || item.raw;
             if (!raw || !/^https?:/i.test(raw)) return null;
             item._fb = item._fb || new Set([item.url]);
@@ -920,7 +974,8 @@
 
         // ---------- LAYOUT GEOMETRY ----------
         function currentGeometry() {
-            if (isFree()) { ensureFreeRects(); return { kind: 'free', count: freeRects.length }; }
+            const bt = boardTree();
+            if (bt) return { kind: 'tree', count: treeLeaves(bt).length };
             if (!isSpot()) {
                 const [cols, rows] = LAYOUTS[prefs.layout] || [3, 2];
                 return { kind: 'grid', cols, rows, count: cols * rows };
@@ -1005,31 +1060,80 @@
         }
         (function followTiles() { syncStreamFrames(); requestAnimationFrame(followTiles); })();
 
-        // ---------- Free layout: drag, resize, add and remove tiles ----------
-        function isFree() { return prefs.layout === 'free' && !comic.on; }
-        let freeRects = loadJSON('arenaFreeV1', null);          // one [x, y, w, h] per tile, as fractions of the screen (so it survives window resizes)
-        const saveFree = () => saveJSON('arenaFreeV1', freeRects);
-        const FREE_MIN = { w: 90, h: 60 }, FREE_SNAP = 10, FEPS = 1e-4;
-        const r4 = n => Math.round(n * 10000) / 10000;
-        function defaultFreeRects(cols = 3, rows = 2) {
-            const out = [];
-            for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) out.push([r4(c / cols), r4(r / rows), r4(1 / cols), r4(1 / rows)]);
+        // ---------- Tiling board: dividers to resize, drag a tile to dock it, add / remove ----------
+        // The screen is always completely full. The board is a tree of splits: {d:'v'|'h', r: share of the first part, a, b}; a leaf is a tile ({slot}).
+        const BOARD_MIN = { w: 110, h: 70 };
+        let curMin = { w: BOARD_MIN.w, h: BOARD_MIN.h };
+        let virtualTree = null;                          // the on-screen preset layout, read back as a tree so its dividers can be dragged
+        const divEls = new Map();
+        const shapeKey = () => (window.innerWidth >= window.innerHeight ? 'L' : 'P') + (Math.min(window.innerWidth, window.innerHeight) < 600 ? 'm' : 'd');
+        function boardKey() { return prefs.layout + '|' + shapeKey(); }
+        function boardTree() { return comic.on ? null : (boards[boardKey()] || null); }
+        const saveBoards = () => saveJSON('arenaBoardV1', boards);
+        const uiTree = () => boardTree() || virtualTree;
+        function validTree(n, depth) {
+            if (!n || typeof n !== 'object' || depth > 40) return false;
+            if (!n.a && !n.b) return true;
+            return (n.d === 'v' || n.d === 'h') && typeof n.r === 'number' && n.r > 0.01 && n.r < 0.99 && validTree(n.a, depth + 1) && validTree(n.b, depth + 1);
+        }
+        function reid(n) { n.id = 'n' + (++nodeSeq); if (n.a) { reid(n.a); reid(n.b); } return n; }
+        function fillIds(n) { if (!n.id) n.id = 'n' + (++nodeSeq); if (n.a) { fillIds(n.a); fillIds(n.b); } }
+        function treeLeaves(n, out = []) { if (!n.a) out.push(n); else { treeLeaves(n.a, out); treeLeaves(n.b, out); } return out; }
+        const cloneTree = n => JSON.parse(JSON.stringify(n));
+        function findNode(n, test) { if (test(n)) return n; return n.a ? (findNode(n.a, test) || findNode(n.b, test)) : null; }
+        function parentOf(root, node) { if (!root.a) return null; if (root.a === node || root.b === node) return root; return parentOf(root.a, node) || parentOf(root.b, node); }
+        function replaceNode(root, old, nw) { if (root === old) return nw; const p = parentOf(root, old); if (p.a === old) p.a = nw; else p.b = nw; return root; }
+        function detach(root, leaf) {                    // take a tile out: its neighbour takes the space
+            const p = parentOf(root, leaf); if (!p) return null;
+            return replaceNode(root, p, p.a === leaf ? p.b : p.a);
+        }
+        const minW = n => !n.a ? curMin.w : (n.d === 'v' ? minW(n.a) + minW(n.b) : Math.max(minW(n.a), minW(n.b)));
+        const minH = n => !n.a ? curMin.h : (n.d === 'h' ? minH(n.a) + minH(n.b) : Math.max(minH(n.a), minH(n.b)));
+        // Lay a tree out in pixels: every tile's rectangle and every divider's position
+        function lay(n, x, y, w, h, out) {
+            if (!n.a) { out.leaves.push({ n, x, y, w, h }); return out; }
+            if (n.d === 'v') { const w1 = w * n.r; lay(n.a, x, y, w1, h, out); lay(n.b, x + w1, y, w - w1, h, out); out.divs.push({ n, x: x + w1, y, len: h, box: { x, y, w, h } }); }
+            else { const h1 = h * n.r; lay(n.a, x, y, w, h1, out); lay(n.b, x, y + h1, w, h - h1, out); out.divs.push({ n, x, y: y + h1, len: w, box: { x, y, w, h } }); }
             return out;
         }
-        function seedFreeFromCells() {                            // start from whatever layout is on screen now
+        const boardSize = () => ({ W: Math.max(1, gridContainer.clientWidth), H: Math.max(1, gridContainer.clientHeight) });
+        function layNow(tree) { const { W, H } = boardSize(); return lay(tree, 0, 0, W, H, { leaves: [], divs: [] }); }
+        function computeMin() {                          // never demand more room than the tiles already have
+            const t = uiTree(); curMin = { w: BOARD_MIN.w, h: BOARD_MIN.h };
+            if (!t) return;
+            let mw = 1e9, mh = 1e9; layNow(t).leaves.forEach(L => { mw = Math.min(mw, L.w); mh = Math.min(mh, L.h); });
+            curMin = { w: Math.min(BOARD_MIN.w, Math.max(40, mw * 0.8)), h: Math.min(BOARD_MIN.h, Math.max(30, mh * 0.8)) };
+        }
+        const fits = tree => layNow(tree).leaves.every(L => L.w >= curMin.w - 2 && L.h >= curMin.h - 2);
+
+        // Read a set of rectangles (the tiles of a preset layout) back as split-tree. Returns null if they don't form clean cuts.
+        function treeFromRects(rects, tol) {
+            if (rects.length === 1) return { slot: rects[0].slot };
+            for (const dir of ['v', 'h']) {
+                const lo = r => (dir === 'v' ? r.x : r.y), hi = r => (dir === 'v' ? r.x + r.w : r.y + r.h);
+                const cands = [...new Set(rects.map(hi))].sort((p, q) => p - q);
+                for (const c of cands) {
+                    const A = [], B = []; let ok = true;
+                    for (const r of rects) { if (hi(r) <= c + tol) A.push(r); else if (lo(r) >= c - tol) B.push(r); else { ok = false; break; } }
+                    if (!ok || !A.length || !B.length) continue;
+                    const ext = set => Math.max(...set.map(hi)) - Math.min(...set.map(lo));
+                    const sA = ext(A), sB = ext(B);
+                    const ta = treeFromRects(A, tol); if (!ta) continue;
+                    const tb = treeFromRects(B, tol); if (!tb) continue;
+                    return { d: dir, r: Math.min(0.95, Math.max(0.05, sA / (sA + sB))), a: ta, b: tb };
+                }
+            }
+            return null;
+        }
+        function measureVirtual() {
             const gr = gridContainer.getBoundingClientRect();
-            if (!arenaStarted || !cells.length || !gr.width || !gr.height) freeRects = defaultFreeRects();
-            else freeRects = cells.map(c => { const r = c.getBoundingClientRect(); return [r4((r.left - gr.left) / gr.width), r4((r.top - gr.top) / gr.height), r4(r.width / gr.width), r4(r.height / gr.height)]; });
-            saveFree();
+            if (!cells.length || !gr.width || !gr.height) return null;
+            const rects = cells.map((c, i) => { const r = c.getBoundingClientRect(); return { x: r.left - gr.left, y: r.top - gr.top, w: r.width, h: r.height, slot: i }; });
+            if (rects.some(r => r.w < 2 || r.h < 2)) return null;
+            const t = treeFromRects(rects, GAP + 3);
+            return t ? reid(t) : null;
         }
-        function ensureFreeRects() { if (!Array.isArray(freeRects)) seedFreeFromCells(); }
-        function placeFreeCell(cell, r) {
-            const st = cell.style;
-            st.position = 'absolute'; st.flex = ''; st.left = (r[0] * 100) + '%'; st.top = (r[1] * 100) + '%'; st.width = (r[2] * 100) + '%'; st.height = (r[3] * 100) + '%';
-        }
-        const rectsOverlap = (a, b) => a[0] < b[0] + b[2] - FEPS && a[0] + a[2] > b[0] + FEPS && a[1] < b[1] + b[3] - FEPS && a[1] + a[3] > b[1] + FEPS;
-        const hitsOthers = (r, skip) => freeRects.some((o, i) => i !== skip && rectsOverlap(r, o));
-        const inScreen = r => r[0] >= -FEPS && r[1] >= -FEPS && r[0] + r[2] <= 1 + FEPS && r[1] + r[3] <= 1 + FEPS;
+
         function freeToast(msg) {
             let t = $('free-toast');
             if (!t) { t = document.createElement('div'); t.id = 'free-toast'; arenaScreen.appendChild(t); }
@@ -1037,154 +1141,211 @@
             clearTimeout(freeToast._t); freeToast._t = setTimeout(() => { t.style.display = 'none'; }, 2600);
         }
 
-        // Drag a tile by its top strip, or resize it from any edge/corner. Tiles never overlap and snap to each other's edges.
-        function startFreeDrag(e, cell, mode) {
-            const pos = cells.indexOf(cell);
-            if (pos < 0 || !freeRects[pos]) return;
-            e.preventDefault(); e.stopPropagation();
-            const el = e.currentTarget;
-            try { el.setPointerCapture(e.pointerId); } catch (err) {}
-            const W = gridContainer.clientWidth, H = gridContainer.clientHeight;
-            const start = freeRects[pos].slice(), sx = e.clientX, sy = e.clientY;
-            let last = start.slice();
-            const xs = [0, 1], ys = [0, 1];
-            freeRects.forEach((o, i) => { if (i !== pos) { xs.push(o[0], o[0] + o[2]); ys.push(o[1], o[1] + o[3]); } });
-            const snap = (vals, cands, thr) => { let best = 0, bd = thr; vals.forEach(v => cands.forEach(c => { const d = c - v; if (Math.abs(d) < bd) { bd = Math.abs(d); best = d; } })); return best; };
-            const minW = FREE_MIN.w / W, minH = FREE_MIN.h / H;
-            const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
-            const compute = (dx, dy, useX = true, useY = true) => {
-                let [x, y, w, h] = start;
-                if (!useX) x = last[0];
-                if (!useY) y = last[1];
-                if (mode === 'move') {
-                    if (useX) { x = clamp(x + dx, 0, 1 - w); x = clamp(x + snap([x, x + w], xs, FREE_SNAP / W), 0, 1 - w); }
-                    if (useY) { y = clamp(y + dy, 0, 1 - h); y = clamp(y + snap([y, y + h], ys, FREE_SNAP / H), 0, 1 - h); }
-                } else {
-                    let l = x, t = y, rt = x + w, b = y + h;
-                    if (mode.includes('w')) { l = clamp(l + dx, 0, rt - minW); l = clamp(l + snap([l], xs, FREE_SNAP / W), 0, rt - minW); }
-                    if (mode.includes('e')) { rt = clamp(rt + dx, l + minW, 1); rt = clamp(rt + snap([rt], xs, FREE_SNAP / W), l + minW, 1); }
-                    if (mode.includes('n')) { t = clamp(t + dy, 0, b - minH); t = clamp(t + snap([t], ys, FREE_SNAP / H), 0, b - minH); }
-                    if (mode.includes('s')) { b = clamp(b + dy, t + minH, 1); b = clamp(b + snap([b], ys, FREE_SNAP / H), t + minH, 1); }
-                    x = l; y = t; w = rt - l; h = b - t;
-                }
-                return [r4(x), r4(y), r4(w), r4(h)];
-            };
-            const move = ev => {
-                const dx = (ev.clientX - sx) / W, dy = (ev.clientY - sy) / H;
-                let r = compute(dx, dy);
-                if (hitsOthers(r, pos)) {
-                    if (mode === 'move') {                                  // slide along a neighbour instead of stopping dead
-                        const rx = compute(dx, dy, true, false), ry = compute(dx, dy, false, true);
-                        r = !hitsOthers(rx, pos) ? rx : (!hitsOthers(ry, pos) ? ry : null);
-                    } else r = null;
-                }
-                if (!r) return;
-                last = r; freeRects[pos] = r; placeFreeCell(cell, r);
-            };
-            const up = () => { el.removeEventListener('pointermove', move); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up); saveFree(); };
-            el.addEventListener('pointermove', move); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+        function placeTileCell(cell, L, W, H) {
+            const st = cell.style, g = GAP / 2;
+            st.position = 'absolute'; st.flex = '';
+            st.left = `calc(${L.x / W * 100}% + ${g}px)`; st.top = `calc(${L.y / H * 100}% + ${g}px)`;
+            st.width = `calc(${L.w / W * 100}% - ${GAP}px)`; st.height = `calc(${L.h / H * 100}% - ${GAP}px)`;
+        }
+        function placeDivider(el, d, W, H) {
+            const st = el.style;
+            if (d.n.d === 'v') { st.left = (d.x / W * 100) + '%'; st.top = (d.y / H * 100) + '%'; st.height = (d.len / H * 100) + '%'; st.width = ''; }
+            else { st.top = (d.y / H * 100) + '%'; st.left = (d.x / W * 100) + '%'; st.width = (d.len / W * 100) + '%'; st.height = ''; }
+        }
+        function applyBoardGeometry() {                  // move tiles and dividers in place while a divider is dragged (no rebuild, so nothing reloads)
+            const tree = boardTree(); if (!tree) return;
+            const { W, H } = boardSize(), out = layNow(tree);
+            out.leaves.forEach((L, i) => { if (cells[i]) placeTileCell(cells[i], L, W, H); });
+            out.divs.forEach(d => { const el = divEls.get(d.n.id); if (el) placeDivider(el, d, W, H); });
+            syncStreamFrames();
+        }
+        function renderDividers() {
+            gridContainer.querySelectorAll(':scope > .tile-div, :scope > #dock-zone').forEach(e => e.remove());
+            divEls.clear();
+            virtualTree = null;
+            if (comic.on) return;
+            let tree = boardTree();
+            if (!tree) { virtualTree = measureVirtual(); tree = virtualTree; }
+            if (!tree) return;
+            const { W, H } = boardSize();
+            layNow(tree).divs.forEach(d => {
+                const el = document.createElement('div');
+                el.className = 'tile-div ' + d.n.d; el.dataset.id = d.n.id;
+                placeDivider(el, d, W, H);
+                el.addEventListener('pointerdown', e => startDividerDrag(e, d.n.id));
+                gridContainer.appendChild(el); divEls.set(d.n.id, el);
+            });
         }
 
-        function addFreeChrome(cell) {
+        // Commit a new tree: tiles keep their pictures (leaf.slot says which current tile each leaf was), then rebuild once
+        function setBoard(tree) {
+            fillIds(tree);
+            const leaves = treeLeaves(tree);
+            const permute = arr => leaves.map(l => (l.slot == null ? null : (arr[l.slot] == null ? null : arr[l.slot])));
+            activeSlots = permute(activeSlots);
+            if (viewMode === 'favs' && savedMain) savedMain = permute(savedMain);
+            leaves.forEach((l, i) => { l.slot = i; });
+            boards[boardKey()] = tree; saveBoards();
+            heroTarget = null;
+            rebuildLayout();
+            syncFreeUi();
+        }
+
+        function startDividerDrag(e, nodeId) {
+            if (comic.on) return;
+            e.preventDefault(); e.stopPropagation();
+            computeMin();
+            const sx = e.clientX, sy = e.clientY; let moved = false;
+            const el0 = e.currentTarget;
+            const BUMP = 40;
+            const move = ev => {
+                if (!moved) {
+                    if (Math.hypot(ev.clientX - sx, ev.clientY - sy) < 4) return;
+                    moved = true;
+                    if (!boardTree()) { if (!virtualTree) return; setBoard(virtualTree); }      // first real edit: this layout becomes your own arrangement
+                }
+                const tree = boardTree(); if (!tree) return;
+                const node = findNode(tree, n => n.id === nodeId); if (!node || !node.a) return;
+                const dv = layNow(tree).divs.find(d => d.n === node); if (!dv) return;
+                const el = divEls.get(nodeId); if (el) el.classList.add('act');
+                const gr = gridContainer.getBoundingClientRect(), v = node.d === 'v', box = dv.box;
+                const total = v ? box.w : box.h;
+                let px = (v ? ev.clientX - gr.left - box.x : ev.clientY - gr.top - box.y);
+                const minA = v ? minW(node.a) : minH(node.a), minB = v ? minW(node.b) : minH(node.b);
+                if (Math.abs(px - total / 2) < 8) px = total / 2;
+                if (px < minA) {
+                    if (px < minA - BUMP && treeLeaves(node.a).length > 1) { bumpSmallest(node.a); return; }
+                    px = minA;
+                } else if (total - px < minB) {
+                    if (total - px < minB - BUMP && treeLeaves(node.b).length > 1) { bumpSmallest(node.b); return; }
+                    px = total - minB;
+                }
+                node.r = Math.min(0.97, Math.max(0.03, px / total));
+                applyBoardGeometry();
+            };
+            const up = () => {
+                window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
+                divEls.forEach(d => d.classList.remove('act'));
+                if (moved && boardTree()) saveBoards();
+            };
+            window.addEventListener('pointermove', move); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+        }
+        function bumpSmallest(sub) {                     // you pushed past what the neighbours can give: the smallest one steps out of the board and goes back to the queue
+            const tree = boardTree(); if (!tree) return;
+            const mine = new Set(treeLeaves(sub)); let best = null;
+            layNow(tree).leaves.forEach(L => { if (mine.has(L.n) && (!best || L.w * L.h < best.w * best.h)) best = L; });
+            if (!best) return;
+            const nt = detach(tree, best.n); if (!nt) return;
+            setBoard(nt);
+            freeToast('A tile was bumped out and went back to the queue');
+        }
+
+        // Drag a tile by its handle: the middle swaps it with the tile under it, an edge docks it beside that tile
+        function startTileDrag(e, cell) {
+            if (comic.on) return;
+            e.preventDefault(); e.stopPropagation();
+            const slot = cells.indexOf(cell);
+            if (slot < 0 || !uiTree()) { freeToast('The layout is still loading: try again'); return; }
+            computeMin();
+            const sx = e.clientX, sy = e.clientY; let moved = false, zone = null;
+            let zoneEl = gridContainer.querySelector(':scope > #dock-zone');
+            if (!zoneEl) { zoneEl = document.createElement('div'); zoneEl.id = 'dock-zone'; gridContainer.appendChild(zoneEl); }
+            const move = ev => {
+                if (!moved) { if (Math.hypot(ev.clientX - sx, ev.clientY - sy) < 5) return; moved = true; cell.classList.add('dragging'); }
+                const tree = uiTree(); if (!tree) return;
+                const gr = gridContainer.getBoundingClientRect(), px = ev.clientX - gr.left, py = ev.clientY - gr.top;
+                const L = layNow(tree).leaves.find(l => px >= l.x && px < l.x + l.w && py >= l.y && py < l.y + l.h);
+                if (!L || L.n.slot === slot) { zone = null; zoneEl.style.display = 'none'; return; }
+                const fx = (px - L.x) / L.w, fy = (py - L.y) / L.h;
+                let side = 'swap';
+                if (!(fx > 0.3 && fx < 0.7 && fy > 0.3 && fy < 0.7)) { const m = Math.min(fx, 1 - fx, fy, 1 - fy); side = m === fx ? 'left' : m === 1 - fx ? 'right' : m === fy ? 'top' : 'bottom'; }
+                zone = { target: L.n.slot, side };
+                let [zx, zy, zw, zh] = [L.x, L.y, L.w, L.h];
+                if (side === 'left') zw = L.w / 2; else if (side === 'right') { zx = L.x + L.w / 2; zw = L.w / 2; } else if (side === 'top') zh = L.h / 2; else if (side === 'bottom') { zy = L.y + L.h / 2; zh = L.h / 2; }
+                Object.assign(zoneEl.style, { display: 'block', left: zx + 'px', top: zy + 'px', width: zw + 'px', height: zh + 'px' });
+            };
+            const up = () => {
+                window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
+                cell.classList.remove('dragging'); zoneEl.style.display = 'none';
+                if (moved && zone) applyDock(slot, zone.target, zone.side);
+            };
+            window.addEventListener('pointermove', move); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+        }
+        function applyDock(slot, targetSlot, side) {
+            const base = uiTree(); if (!base) return;
+            const t = cloneTree(base);
+            const leaf = findNode(t, n => !n.a && n.slot === slot), target = findNode(t, n => !n.a && n.slot === targetSlot);
+            if (!leaf || !target || leaf === target) return;
+            if (side === 'swap') { const s0 = leaf.slot; leaf.slot = target.slot; target.slot = s0; setBoard(t); return; }
+            const rest = detach(t, leaf); if (!rest) return;
+            const first = side === 'left' || side === 'top';
+            const holder = { d: (side === 'left' || side === 'right') ? 'v' : 'h', r: 0.5, a: first ? leaf : target, b: first ? target : leaf };
+            const res = replaceNode(rest, target, holder);
+            if (!fits(res)) { freeToast('Not enough room to dock there'); return; }
+            setBoard(res);
+        }
+        function removeTile(pos) {
+            const base = uiTree(); if (!base) return;
+            const t = cloneTree(base);
+            const leaf = findNode(t, n => !n.a && n.slot === pos);
+            if (!leaf) return;
+            if (treeLeaves(t).length <= 1) { freeToast('Can\'t remove the last tile'); return; }
+            const nt = detach(t, leaf); if (nt) setBoard(nt);      // its item goes back to the queue
+        }
+        function addTile() {
+            const base = uiTree(); if (!base) { freeToast('The layout is still loading: try again'); return; }
+            computeMin();
+            const t = cloneTree(base);
+            let best = null; layNow(t).leaves.forEach(L => { if (!best || L.w * L.h > best.w * best.h) best = L; });
+            const leaf = findNode(t, n => n === n && !n.a && n.slot === best.n.slot);
+            const nl = { slot: null };
+            const holder = { d: best.w * 0.5625 >= best.h ? 'v' : 'h', r: 0.5, a: leaf, b: nl };
+            const res = replaceNode(t, leaf, holder);
+            if (!fits(res)) { freeToast('No room for another tile: remove one first'); return; }
+            setBoard(res);
+        }
+        function resetBoard() {
+            delete boards[boardKey()]; saveBoards();
+            heroTarget = null; heroRR = 0; camRR = 0;
+            if (isSpot()) { rebuildLayout(); pickAnimatedHero(); }
+            rebuildLayout(); syncFreeUi();
+        }
+        function syncFreeUi() { $('free-reset').disabled = !boardTree(); }
+        $('free-add').addEventListener('click', addTile);
+        $('free-reset').addEventListener('click', resetBoard);
+
+        // Per-tile controls: a drag handle strip (desktop: on hover) and, on touch screens, a small ⋯ dot that shows that tile's buttons
+        let revealTimer = 0;
+        function setReveal(cell, on) {
+            cells.forEach(c => { if (c !== cell) c.classList.remove('reveal'); });
+            cell.classList.toggle('reveal', on);
+            clearTimeout(revealTimer);
+            if (on) revealTimer = setTimeout(() => cell.classList.remove('reveal'), 9000);
+        }
+        function addTileChrome(cell) {
+            if (comic.on) return;
             const h = document.createElement('div');
-            h.className = 'free-handle'; h.title = 'Drag to move this tile';
+            h.className = 'free-handle'; h.title = 'Drag to move this tile: drop on the middle of another tile to swap, or on an edge to dock beside it';
             h.appendChild(document.createTextNode('⠿ drag'));
             const x = document.createElement('span');
-            x.className = 'free-x'; x.textContent = '✕'; x.title = 'Remove this tile (frees the space)';
+            x.className = 'free-x'; x.textContent = '✕'; x.title = 'Remove this tile (the others take the space)';
             x.addEventListener('pointerdown', e => e.stopPropagation());
-            x.addEventListener('click', e => { e.stopPropagation(); removeFreeTile(cells.indexOf(cell)); });
+            x.addEventListener('click', e => { e.stopPropagation(); removeTile(cells.indexOf(cell)); });
             h.appendChild(x);
-            h.addEventListener('pointerdown', e => { if (e.target !== x) startFreeDrag(e, cell, 'move'); });
+            h.addEventListener('pointerdown', e => { if (e.target !== x) startTileDrag(e, cell); });
             h.addEventListener('click', e => e.stopPropagation());
             cell.appendChild(h);
-            ['n', 's', 'e', 'w', 'nw', 'ne', 'sw', 'se'].forEach(d => {
-                const z = document.createElement('div');
-                z.className = 'free-rz'; z.dataset.dir = d;
-                z.addEventListener('pointerdown', e => startFreeDrag(e, cell, d));
-                z.addEventListener('click', e => e.stopPropagation());
-                cell.appendChild(z);
-            });
+            const dot = document.createElement('div');
+            dot.className = 'cell-dot'; dot.textContent = '⋯'; dot.title = 'Show this tile\'s buttons';
+            dot.addEventListener('click', e => { e.stopPropagation(); setReveal(cell, !cell.classList.contains('reveal')); });
+            cell.appendChild(dot);
         }
-
-        function removeFreeTile(pos) {
-            if (!isFree() || !freeRects[pos]) return;
-            freeRects.splice(pos, 1); activeSlots.splice(pos, 1);      // its item goes back to the queue
-            saveFree(); rebuildLayout();
-        }
-        function addFreeTile(rect) {
-            if (!rect) { freeToast('No room there: shrink or remove a tile first'); return false; }
-            freeRects.push(rect); activeSlots.push(null);
-            saveFree(); rebuildLayout();
-            return true;
-        }
-        // Biggest empty rectangle on the screen (for the ➕ button)
-        function largestFreeRect() {
-            const W = gridContainer.clientWidth, H = gridContainer.clientHeight;
-            const cols = 40, rows = Math.max(18, Math.min(40, Math.round(40 * H / W)));
-            const occ = Array.from({ length: rows }, () => new Array(cols).fill(false));
-            freeRects.forEach(o => {
-                const c0 = Math.floor((o[0] + FEPS) * cols), c1 = Math.ceil((o[0] + o[2] - FEPS) * cols), r0 = Math.floor((o[1] + FEPS) * rows), r1 = Math.ceil((o[1] + o[3] - FEPS) * rows);
-                for (let r = r0; r < r1 && r < rows; r++) for (let c = c0; c < c1 && c < cols; c++) occ[r][c] = true;
-            });
-            const hist = new Array(cols).fill(0); let best = null;
-            for (let r = 0; r < rows; r++) {
-                for (let c = 0; c < cols; c++) hist[c] = occ[r][c] ? 0 : hist[c] + 1;
-                const stack = [];
-                for (let c = 0; c <= cols; c++) {
-                    const hc = c === cols ? 0 : hist[c];
-                    let st = c;
-                    while (stack.length && stack[stack.length - 1].h >= hc) {
-                        const t = stack.pop(), area = t.h * (c - t.i);
-                        if (!best || area > best.area) best = { area, c0: t.i, c1: c, r0: r + 1 - t.h, r1: r + 1 };
-                        st = t.i;
-                    }
-                    stack.push({ i: st, h: hc });
-                }
-            }
-            if (!best) return null;
-            let w = (best.c1 - best.c0) / cols, h = (best.r1 - best.r0) / rows;
-            w = Math.min(w, 0.5); h = Math.min(h, 0.6);
-            if (w * W < FREE_MIN.w || h * H < FREE_MIN.h) return null;
-            return [r4(best.c0 / cols), r4(best.r0 / rows), r4(w), r4(h)];
-        }
-        // Grow a tile outwards from a point you double-clicked
-        function growRectAt(px, py) {
-            const W = gridContainer.clientWidth, H = gridContainer.clientHeight;
-            const fx = px / W, fy = py / H, sx = 0.01, sy = 0.01 * W / H;
-            let r = [Math.max(0, fx - sx), Math.max(0, fy - sy), 2 * sx, 2 * sy];
-            r[2] = Math.min(r[2], 1 - r[0]); r[3] = Math.min(r[3], 1 - r[1]);
-            if (hitsOthers(r, -1)) return null;
-            const MAXW = 0.45, MAXH = 0.55;
-            for (let guard = 0; guard < 400; guard++) {
-                let grew = false;
-                for (const side of ['e', 's', 'w', 'n']) {
-                    const t = r.slice();
-                    if (side === 'e') t[2] += sx; if (side === 's') t[3] += sy; if (side === 'w') { t[0] -= sx; t[2] += sx; } if (side === 'n') { t[1] -= sy; t[3] += sy; }
-                    if (!inScreen(t) || t[2] > MAXW || t[3] > MAXH || hitsOthers(t, -1)) continue;
-                    r = t; grew = true;
-                }
-                if (!grew) break;
-            }
-            if (r[2] * W < FREE_MIN.w || r[3] * H < FREE_MIN.h) return null;
-            return r.map(r4);
-        }
-        gridContainer.addEventListener('dblclick', e => {
-            if (!isFree() || e.target !== gridContainer) return;
-            const gr = gridContainer.getBoundingClientRect();
-            addFreeTile(growRectAt(e.clientX - gr.left, e.clientY - gr.top));
-        });
-        function syncFreeUi() { $('free-tools').style.display = prefs.layout === 'free' ? 'inline-flex' : 'none'; }
-        $('free-add').addEventListener('click', () => addFreeTile(largestFreeRect()));
-        $('free-reset').addEventListener('click', () => {
-            if (!confirm('Reset the free layout to a 3×2 grid? Your tile arrangement will be replaced.')) return;
-            freeRects = defaultFreeRects(); saveFree(); rebuildLayout();
-        });
 
         function makeCell(cover) {
             const pos = cells.length;
             const cell = document.createElement('div');
             cell.className = 'cell' + (cover ? ' cover' : '');
-            cell.addEventListener('click', e => skipSlot(cell, pos, e));
+            cell.addEventListener('click', e => { if (cell.classList.contains('reveal') && !e.target.closest('.cell-actions, .save-badge')) cell.classList.remove('reveal'); skipSlot(cell, pos, e); });
             cells.push(cell);
             return cell;
         }
@@ -1212,9 +1373,11 @@
             cells = [];
             const st = gridContainer.style;
             const tileCover = curFit() === 'cover';
-            if (geo.kind === 'free') {
+            if (geo.kind === 'tree') {
                 st.display = 'block'; st.gridTemplateColumns = ''; st.gridTemplateRows = '';
-                freeRects.forEach(r => { const c = makeCell(tileCover); placeFreeCell(c, r); gridContainer.appendChild(c); });
+                const tree = boardTree(), { W, H } = boardSize();
+                treeLeaves(tree).forEach((l, i) => { l.slot = i; });
+                lay(tree, 0, 0, W, H, { leaves: [], divs: [] }).leaves.forEach(L => { const c = makeCell(tileCover); placeTileCell(c, L, W, H); gridContainer.appendChild(c); });
             } else if (geo.kind === 'grid') {
                 st.display = 'grid';
                 st.gridTemplateColumns = `repeat(${geo.cols}, 1fr)`;
@@ -1244,6 +1407,7 @@
                     renderCell(c, i);
                 });
             } finally { buildingDom = false; }
+            renderDividers();
             pruneFrames(); syncStreamFrames();
             killStreams(hold);                                   // anything not reused is shut down
             hold.querySelectorAll('video').forEach(v => v.pause());
@@ -1453,10 +1617,11 @@
             if (favorites.has(item._key)) {
                 const old = favorites.get(item._key);
                 if (old && String(old._key).startsWith('local:') && old._local) ignoreLocal(old._key);      // keep a loose file from coming straight back
+                if (old && old._cloud) { purged.add(item._key); savePurged(); }      // a cloud favorite you unstar stays gone when the manifest is re-read
                 favorites.delete(item._key);
             } else {
                 if (purged.delete(item._key)) savePurged();
-                favorites.set(item._key, { url: item._remoteUrl || item.url, _raw: item._remoteUrl ? (item._raw || '') : (item._raw || item.raw || ''), _local: item._local || undefined, isVideo: item.isVideo, pageUrl: item.pageUrl, _key: item._key, _guess: !!item._guess, _gd: item._gd || undefined, _anim: item._anim || undefined, sprite: item.sprite || null, isStream: !!item.isStream, streamType: item.streamType || null, name: item.name || '' });
+                favorites.set(item._key, { url: item._remoteUrl || item.url, _raw: item._remoteUrl ? (item._raw || '') : (item._raw || item.raw || ''), _local: item._local || undefined, isVideo: item.isVideo, pageUrl: item.pageUrl, _key: item._key, _guess: !!item._guess, _gd: item._gd || undefined, _mime: item._mime || undefined, _size: item._size || undefined, _anim: item._anim || undefined, sprite: item.sprite || null, isStream: !!item.isStream, streamType: item.streamType || null, name: item.name || '' });
             }
             saveFavorites();
             if (FS_OK && !dirHandle && favorites.has(item._key)) setStatus(pendingHandle ? '⚠ save folder not connected: this favorite is only kept as a link. Click 📁 Reconnect folder.' : '⚠ no save folder set: this favorite is only kept as a link. Click 📁 Save folder to keep files.');
@@ -1496,7 +1661,7 @@
         function renderCell(cell, pos) {
             if (cell._frame) { if (cell._frame.cell === cell) cell._frame.cell = null; cell._frame = null; }
             renderCellInner(cell, pos);
-            if (isFree()) addFreeChrome(cell);
+            addTileChrome(cell);
             if (!buildingDom) { pruneFrames(); syncStreamFrames(); }
         }
         function renderCellInner(cell, pos) {
@@ -1504,7 +1669,7 @@
             cell.innerHTML = '';
             const item = slotItem(pos);
             const keep = cell._keep; cell._keep = null;
-            cell._item = null; cell._media = null;
+            cell._item = null; cell._media = null; cell._driveStalled = false;
 
             if (!item) {
                 cell.innerHTML = slotKind(pos) === 'cam'
@@ -1515,7 +1680,7 @@
 
             let mediaEl;
             const isVid = item.isVideo || VID_RE.test(item.url);
-            let spriteImg = null, hosted = false;
+            let spriteImg = null, hosted = false, deferDirect = false;
             if (keep) {
                 mediaEl = keep;                                  // already loaded and playing: just move it in
             } else if (item.streamType === 'iframe') {
@@ -1537,6 +1702,7 @@
                     mediaEl.addEventListener('playing', () => { item._sRetries = 0; });
                 }
                 if (item.streamType === 'hls') attachHls(mediaEl, item.url, () => mediaEl.onerror && mediaEl.onerror());
+                else if (item._gd && (item._blob || driveBlobMode)) { if (item._blob) mediaEl.src = item._blob; else deferDirect = true; }      // this device can't load Drive links directly: use the background download
                 else mediaEl.src = item.url;
                 mediaEl.autoplay = true; mediaEl.loop = true; mediaEl.playsInline = true;
                 mediaEl.muted = soundKey !== item._key;      // sound is OFF unless you turned it on for this one
@@ -1547,7 +1713,8 @@
                 mediaEl = document.createElement('img');
                 mediaEl.referrerPolicy = 'no-referrer';
                 if (comic.on && pos === 0) mediaEl.fetchPriority = 'high';      // dojin page jumps ahead of the arena tiles' downloads
-                mediaEl.src = item.url;
+                if (item._gd && (item._blob || driveBlobMode)) { if (item._blob) mediaEl.src = item._blob; else deferDirect = true; }
+                else mediaEl.src = item.url;
             }
 
             // Remember native size; if the spotlight item's size changed, re-layout
@@ -1559,6 +1726,7 @@
                 if (isSpot() && pos < heroCount() && slotKind(pos) !== 'cam' && (!old || Math.abs(old.w - w) > 1 || Math.abs(old.h - h) > 1)) scheduleRebuild();
             };
             if (!hosted) mediaEl.addEventListener(isVid ? 'loadedmetadata' : 'load', noteSize);
+            if (item._gd) mediaEl.addEventListener(isVid ? 'loadedmetadata' : 'load', () => { driveFailStreak = 0; hideDriveBanner(); });
 
             mediaEl.onerror = () => {
                 if (item.isStream) { streamDown(cell, pos, item); return; }
@@ -1578,6 +1746,7 @@
                     cell.appendChild(rb);
                     return;
                 }
+                if (item._gd && !item._blobTried) { item._blobTried = true; driveBlobTry(item, cell, pos, mediaEl); return; }      // direct load failed: try downloading the file in the background
                 if (!item.sprite) {                                  // arena item: try the original link before dropping it
                     const nf = nextFallback(item);
                     if (nf) { item.url = nf; item.isVideo = VID_RE.test(nf); renderCell(cell, pos); return; }
@@ -1594,11 +1763,13 @@
                         return;
                     }
                 }
+                if (item._gd && ++driveFailStreak >= DRIVE_TRIP) { driveStall(cell, pos, item); return; }      // several Drive failures in a row: stop skipping through the pool
                 if (viewMode === 'pool') failed.add(item._key);
                 else if (favSource !== 'streams') favDead.add(item._key);      // dead favorite: stop re-drawing it, so the wall is not just the few that still work
                 advanceSlot(cell, pos);
             };
 
+            if (deferDirect) { item._blobTried = true; setTimeout(() => driveBlobTry(item, cell, pos, mediaEl), 0); }
             if (spriteImg) spriteImg.onerror = mediaEl.onerror;
             if (!hosted) cell.appendChild(mediaEl);
             cell._item = item; cell._media = mediaEl;
@@ -1712,7 +1883,73 @@
             }
         }
 
+
+        // ================= CLOUD FAVORITES (Backblaze B2 / any static bucket) =================
+        const cloudPrefs = Object.assign({ url: '' }, loadJSON('arenaCloudV1', {}));
+        const cloudUrlEl = $('cloud-url'), cloudStatusEl = $('cloud-status');
+        cloudUrlEl.value = cloudPrefs.url;
+        function cloudStatus(msg, bad) { cloudStatusEl.textContent = msg; cloudStatusEl.style.color = bad ? '#f87171' : '#9ca3af'; }
+        function cloudRecord(base, it) {
+            const path = String(it.p || '');
+            if (!path || /^(https?:)?\/\//i.test(path) || path.includes('..')) return null;      // manifest paths are relative, always
+            const url = base + path.split('/').map(encodeURIComponent).join('/');
+            const isVideo = !!it.v || /\.(mp4|webm|mov|m4v)$/i.test(path);
+            return { url, _raw: url, isVideo, _anim: !!(it.a || isVideo || /\.gif$/i.test(path)), pageUrl: it.g || '', _key: it.k || ('cloud:' + path), _guess: false, _cloud: 1, _size: it.s || undefined, sprite: null, isStream: false, streamType: null, name: path.split('/').pop() };
+        }
+        let cloudBusy = false;
+        async function loadCloud(silent) {
+            if (cloudBusy) return;
+            const url = cleanSecret(cloudUrlEl.value).trim();
+            if (!/^https:\/\/.+\.json(\?.*)?$/i.test(url)) { if (!silent) cloudStatus('Paste the manifest link: it starts with https:// and ends with .json', true); return; }
+            cloudBusy = true; const btn = $('cloud-load-btn'); btn.disabled = true;
+            try {
+                if (!silent) cloudStatus('Reading the manifest…');
+                let res;
+                try { res = await fetch(url, { cache: 'no-store' }); }
+                catch (e) { throw new Error('Could not read the manifest. Usually the bucket\'s CORS rule is missing or the link is wrong (see SETUP.txt step 4).'); }
+                if (!res.ok) throw new Error('The manifest answered ' + res.status + (res.status === 404 ? ' (not found: check the link and that the bucket is Public)' : res.status === 401 || res.status === 403 ? ' (access denied: the bucket must be Public)' : '') + '.');
+                let data; try { data = await res.json(); } catch (e) { throw new Error('That link is not a manifest (not valid JSON).'); }
+                if (!data || !Array.isArray(data.items)) throw new Error('That file is not an Arena manifest.');
+                const base = url.replace(/[?#].*$/, '').replace(/[^/]*$/, '');
+                const seen = new Set(); let added = 0, relinked = 0;
+                data.items.forEach(it => {
+                    const rec = it && cloudRecord(base, it);
+                    if (!rec || purged.has(rec._key)) return;
+                    seen.add(rec._key);
+                    const mine = favorites.get(rec._key);
+                    if (!mine) { favorites.set(rec._key, rec); added++; }
+                    else if (mine._cloud) { Object.assign(mine, rec); }
+                    else if (!mine._local) { favorites.set(rec._key, rec); relinked++; }      // a link-only favorite whose original may be dead: the cloud copy replaces it
+                });
+                let gone = 0;
+                [...favorites.values()].forEach(f => { if (f._cloud && !seen.has(f._key)) { favorites.delete(f._key); gone++; } });
+                cloudPrefs.url = url; saveJSON('arenaCloudV1', cloudPrefs);
+                saveJSON('arenaFavoritesV1', [...favorites.values()]);
+                const total = [...favorites.values()].filter(f => f._cloud).length;
+                cloudStatus(`☁ ${total.toLocaleString()} cloud favorite${total === 1 ? '' : 's'}` + (added ? `, ${added.toLocaleString()} new` : '') + (relinked ? `, ${relinked.toLocaleString()} dead links replaced` : '') + (gone ? `, ${gone.toLocaleString()} removed (no longer in the manifest)` : '') + '.');
+                if (prefs.mixFavs && viewMode === 'pool' && added && addFavsToPool()) updateQueue();
+                refreshSaveBadges();
+                if (!silent && total) setupFavsBtn.click();
+            } catch (e) { cloudStatus(e.message, true); }
+            finally { cloudBusy = false; btn.disabled = false; }
+        }
+        $('cloud-load-btn').addEventListener('click', () => loadCloud(false));
+        $('cloud-forget-btn').addEventListener('click', () => {
+            const n = [...favorites.values()].filter(f => f._cloud).length;
+            if (!confirm(`Remove ${n} cloud favorites from this device? Nothing is deleted from the bucket.`)) return;
+            [...favorites.values()].forEach(f => { if (f._cloud) favorites.delete(f._key); });
+            cloudPrefs.url = ''; cloudUrlEl.value = ''; saveJSON('arenaCloudV1', cloudPrefs);
+            saveJSON('arenaFavoritesV1', [...favorites.values()]);
+            cloudStatus('Cloud favorites removed from this device.');
+        });
+        if (cloudPrefs.url) setTimeout(() => loadCloud(true), 0);      // quietly pick up new uploads every time Arena opens
+
         // ================= GOOGLE DRIVE SOURCE =================
+        let driveBlobMode = false;                 // set once a background download has worked where a direct load failed
+        let driveFailStreak = 0;                   // Drive files that failed in a row (any success resets it)
+        const DRIVE_TRIP = 6;                      // after this many in a row, stop and explain instead of skipping through the whole pool
+        const DRIVE_BLOB_MAX = 100 * 1024 * 1024;  // phones run out of memory on huge background downloads
+        const driveBlobs = [];                     // items currently holding a background-downloaded copy, oldest first
         const DRIVE_API = 'https://www.googleapis.com/drive/v3';
         const drivePrefs = Object.assign({ folders: '', key: '', client: '', mode: 'key', sub: true }, loadJSON('arenaDriveV1', {}));
         const driveSt = { token: '', exp: 0, tc: null, tcClient: '', timer: null, done: null };
@@ -1804,7 +2041,7 @@
         async function driveScan(rootIds, sub, onProgress) {
             const files = [], seen = new Set(rootIds), queue = rootIds.slice();
             let folders = 0;
-            const fields = encodeURIComponent('nextPageToken,files(id,name,mimeType,imageMediaMetadata(width,height),videoMediaMetadata(width,height))');
+            const fields = encodeURIComponent('nextPageToken,files(id,name,mimeType,size,imageMediaMetadata(width,height),videoMediaMetadata(width,height))');
             while (queue.length && folders < 2000) {
                 const id = queue.shift(); folders++;
                 let page = '';
@@ -1827,7 +2064,7 @@
             const isVideo = mime.startsWith('video/');
             const url = driveMediaUrl(f.id);
             const md = f.videoMediaMetadata || f.imageMediaMetadata;
-            const it = { url, _raw: url, isVideo, _anim: isVideo || mime === 'image/gif', pageUrl: 'https://drive.google.com/file/d/' + f.id + '/view', _key: 'gdrive:' + f.id, _guess: false, _tried: [], sprite: null, name: f.name || '', _gd: f.id, _batches: [] };
+            const it = { url, _raw: url, isVideo, _anim: isVideo || mime === 'image/gif', pageUrl: 'https://drive.google.com/file/d/' + f.id + '/view', _key: 'gdrive:' + f.id, _guess: false, _tried: [], sprite: null, name: f.name || '', _gd: f.id, _mime: mime, _size: parseInt(f.size, 10) || 0, _batches: [] };
             if (md && md.width && md.height) it._dim = { w: md.width, h: md.height };
             return it;
         }
@@ -1956,6 +2193,185 @@
         })();
         $('drive-load-btn').addEventListener('click', loadDrive);
         $('drive-test-btn').addEventListener('click', testDrive);
+        // ---------- Failure handling and diagnostics for Drive media ----------
+        // Reads the first chunk of a file and stops: tells us exactly what Google answers without downloading the whole thing
+        async function driveFetchHead(url) {
+            const ctl = new AbortController();
+            try {
+                const res = await fetch(url, { referrerPolicy: 'no-referrer', signal: ctl.signal });
+                const type = (res.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+                const len = parseInt(res.headers.get('content-length') || '0', 10) || 0;
+                if (!res.ok) {
+                    let msg = '', reason = '';
+                    try { const j = await res.json(); const er = j.error || {}; msg = er.message || ''; reason = ((er.details || []).find(d => d && d.reason) || {}).reason || ((er.errors || [])[0] || {}).reason || er.status || ''; } catch (e) {}
+                    ctl.abort();
+                    return { ok: false, status: res.status, type, len, msg, reason };
+                }
+                if (/^text\/|json|html/.test(type)) { ctl.abort(); return { ok: false, status: res.status, type, len, msg: 'got a web page instead of the file', reason: '' }; }
+                let got = 0;
+                try { const c = await res.body.getReader().read(); got = c.value ? c.value.length : 0; } catch (e) {}
+                ctl.abort();
+                return { ok: true, status: res.status, type, len, got };
+            } catch (e) { return { ok: false, status: 0, err: String((e && e.message) || e) }; }
+        }
+        function driveReasonText(r) {
+            if (r.ok) return 'Google serves the file fine in the background, but the browser could not show it (an unsupported format, or an interrupted download).';
+            if (!r.status) return `Could not reach Google from this device (network, VPN or content blocker, or offline)${r.err ? ': ' + r.err : ''}.`;
+            let t = `Google answered HTTP ${r.status}` + (r.reason ? ` (${r.reason})` : '') + (r.msg ? `: ${r.msg}` : '') + '.';
+            if (r.status === 429 || /rateLimit|quota/i.test((r.reason || '') + (r.msg || ''))) t += ' This looks like a rate or download limit: wait a few minutes and retry.';
+            else if (r.status === 401) t += ' Your sign-in has expired.';
+            return t;
+        }
+
+        // Downloads the file in the background and shows that copy (size-capped, and only a handful are kept in memory)
+        async function driveBlobTry(item, cell, pos, mediaEl) {
+            const fail = (err) => { item._driveErr = err; if (mediaEl.onerror) mediaEl.onerror(); };
+            if (item._size && item._size > DRIVE_BLOB_MAX) { fail({ status: 0, msg: `file is ${(item._size / 1048576).toFixed(0)} MB, too big for the background download` }); return; }
+            try {
+                const res = await fetch(driveMediaUrl(item._gd), { referrerPolicy: 'no-referrer' });
+                if (!res.ok) {
+                    let msg = '', reason = '';
+                    try { const j = await res.json(); const er = j.error || {}; msg = er.message || ''; reason = ((er.details || []).find(d => d && d.reason) || {}).reason || ((er.errors || [])[0] || {}).reason || er.status || ''; } catch (e) {}
+                    fail({ status: res.status, msg, reason }); return;
+                }
+                const blob = await res.blob();
+                const typed = blob.type && /^(image|video)\//.test(blob.type) ? blob : new Blob([blob], { type: item._mime || (item.isVideo ? 'video/mp4' : 'image/jpeg') });
+                item._blob = URL.createObjectURL(typed);
+                driveBlobs.push(item);
+                while (driveBlobs.length > 10) {
+                    const old = driveBlobs.shift();
+                    if (cells.some(c => c._item === old)) { driveBlobs.push(old); break; }
+                    try { URL.revokeObjectURL(old._blob); } catch (e) {}
+                    old._blob = null; old._blobTried = false;
+                }
+                driveBlobMode = true;
+                if (cell._media === mediaEl && cell._item === item) mediaEl.src = item._blob;
+            } catch (e) { fail({ status: 0, msg: String((e && e.message) || e) }); }
+        }
+
+        function driveBanner() {
+            let b = $('drive-banner');
+            if (b) return b;
+            b = document.createElement('div'); b.id = 'drive-banner';
+            b.innerHTML = '<div id="drive-banner-text"></div><div class="row"><button id="drive-banner-retry">↻ Retry</button><button id="drive-banner-diag">🩺 Diagnose</button><button id="drive-banner-x">Hide</button></div>';
+            document.body.appendChild(b);
+            $('drive-banner-retry').addEventListener('click', driveRetryAll);
+            $('drive-banner-diag').addEventListener('click', runDriveDiagnostics);
+            $('drive-banner-x').addEventListener('click', () => { b.style.display = 'none'; });
+            return b;
+        }
+        function hideDriveBanner() { const b = $('drive-banner'); if (b && b.style.display !== 'none') b.style.display = 'none'; }
+        let driveProbing = false;
+        function showDriveBanner(item) {
+            const b = driveBanner(); b.style.display = 'block';
+            if (driveProbing) return;
+            driveProbing = true;
+            $('drive-banner-text').textContent = `⚠ ${DRIVE_TRIP} Drive files in a row would not load, so Arena stopped skipping through your pool. Checking why…`;
+            driveFetchHead(driveMediaUrl(item._gd)).then(r => {
+                $('drive-banner-text').textContent = `⚠ ${DRIVE_TRIP} Drive files in a row would not load, so Arena stopped skipping through your pool. ${driveReasonText(r)}`;
+            }).finally(() => { driveProbing = false; });
+        }
+        function driveStall(cell, pos, item) {
+            cell._driveStalled = true;
+            cell.innerHTML = '';
+            const box = document.createElement('div');
+            box.style.cssText = 'display:flex;flex-direction:column;gap:8px;align-items:center;padding:10px;text-align:center;color:#fbbf24;font-size:.85rem;';
+            box.appendChild(document.createTextNode('⚠ Drive file would not load'));
+            const rb = document.createElement('button'); rb.textContent = '↻ Retry';
+            rb.addEventListener('click', e => { e.stopPropagation(); driveRetryAll(); });
+            box.appendChild(rb);
+            box.addEventListener('click', e => e.stopPropagation());
+            cell.appendChild(box);
+            showDriveBanner(item);
+        }
+        function driveRetryAll() {
+            driveFailStreak = 0; hideDriveBanner();
+            const fix = it => { if (it && it._gd) { failed.delete(it._key); favDead.delete(it._key); it._blobTried = false; it._fb = null; it._driveErr = null; } };
+            mediaPool.forEach(fix); favPool.forEach(fix);
+            cells.forEach((c, i) => { if (c._driveStalled) renderCell(c, i); });
+        }
+
+        // Report: tries a few of your files two ways and writes down exactly what happened. Works on a phone, no console needed.
+        function diagPanel() {
+            let d = $('drive-diag');
+            if (!d) {
+                d = document.createElement('div'); d.id = 'drive-diag';
+                d.innerHTML = '<div class="card"><pre id="drive-diag-text"></pre><div class="row"><button id="drive-diag-copy">📋 Copy report</button><button id="drive-diag-close">Close</button></div></div>';
+                document.body.appendChild(d);
+                $('drive-diag-close').addEventListener('click', () => { d.style.display = 'none'; });
+                $('drive-diag-copy').addEventListener('click', async () => {
+                    const t = $('drive-diag-text').textContent;
+                    try { await navigator.clipboard.writeText(t); $('drive-diag-copy').textContent = '✅ Copied'; } catch (e) { prompt('Copy the report:', t); }
+                    setTimeout(() => { $('drive-diag-copy').textContent = '📋 Copy report'; }, 2000);
+                });
+            }
+            d.style.display = 'flex';
+            return d;
+        }
+        let diagRunning = false;
+        async function runDriveDiagnostics() {
+            if (diagRunning) return;
+            diagRunning = true; readDriveForm(); diagPanel();
+            const lines = []; const out = $('drive-diag-text');
+            const L = t => { lines.push(t); out.textContent = lines.join('\n'); };
+            try {
+                const priv = drivePrefs.mode === 'oauth';
+                L('Arena Drive diagnostics · ' + new Date().toLocaleString());
+                L('Browser: ' + navigator.userAgent);
+                L(`Page: ${location.protocol}//${location.host} · online: ${navigator.onLine} · touch screen: ${'ontouchstart' in window}`);
+                const k = drivePrefs.key || '';
+                L(priv ? `Mode: sign-in · signed in now: ${driveSt.token ? 'yes' : 'no'}` : `Mode: API key · key: ${k.length} characters, ${/^AIza/.test(k) ? 'starts with AIza' : 'does not start with AIza'}, ${/^[0-9A-Za-z_-]*$/.test(k) ? 'only normal characters' : 'contains unusual characters'}`);
+                L(`State: direct-load failures in a row: ${driveFailStreak} · background-download mode: ${driveBlobMode ? 'on' : 'off'}`);
+                L('');
+                if (!driveAuthParam()) { L(priv ? 'Not signed in. Press "Sign in & load" first.' : 'No API key entered.'); return; }
+                let files = mediaPool.filter(it => it._gd);
+                if (!files.length) {
+                    const ids = parseDriveIds(drivePrefs.folders);
+                    if (!ids.length) { L('No Drive files are loaded and no folder link is entered.'); return; }
+                    L('No Drive files in the pool yet: reading the first folder…');
+                    const data = await driveGet(`/files?q=${encodeURIComponent(`'${ids[0]}' in parents and trashed=false and (mimeType contains 'image/' or mimeType contains 'video/')`)}&pageSize=100&fields=${encodeURIComponent('files(id,name,mimeType,size)')}&supportsAllDrives=true&includeItemsFromAllDrives=true`);
+                    files = (data.files || []).map(driveItem).filter(Boolean);
+                    if (!files.length) { L('The folder has no images or videos at its top level.'); return; }
+                }
+                const cat = it => /hei[cf]/i.test(it._mime || '') ? 'heic' : /quicktime/i.test(it._mime || '') ? 'mov' : (it._mime === 'image/gif' ? 'gif' : (it.isVideo ? 'video' : 'image'));
+                const groups = {};
+                files.forEach(it => (groups[cat(it)] = groups[cat(it)] || []).push(it));
+                const sample = [];
+                ['image', 'gif', 'video', 'mov', 'heic'].forEach(c => {
+                    const g = (groups[c] || []).slice().sort((a, b) => (a._size || 0) - (b._size || 0));
+                    if (g.length) sample.push(g[0]);
+                    if (g.length > 1) sample.push(g[g.length - 1]);
+                });
+                const test = sample.slice(0, 8);
+                L(`Testing ${test.length} of ${files.length} files (smallest and largest of each type). Each is loaded the normal way, then downloaded in the background.`);
+                L('');
+                const results = [];
+                for (let i = 0; i < test.length; i += 3) {
+                    const part = await Promise.all(test.slice(i, i + 3).map(async it => {
+                        const url = driveMediaUrl(it._gd);
+                        const a = await probe(url, !!it.isVideo);
+                        const b = await driveFetchHead(url);
+                        return { it, a, b };
+                    }));
+                    part.forEach(r => {
+                        results.push(r);
+                        const sz = r.it._size ? (r.it._size / 1048576 >= 1 ? (r.it._size / 1048576).toFixed(1) + ' MB' : Math.round(r.it._size / 1024) + ' KB') : 'size unknown';
+                        L(`• ${String(r.it.name || r.it._gd).slice(0, 34)}  (${r.it._mime}, ${sz})`);
+                        L(`    normal load: ${r.a === true ? 'OK' : r.a === null ? 'timed out after 15 s' : 'FAILED'}`);
+                        L(`    background download: ${r.b.ok ? `OK (HTTP ${r.b.status}, ${r.b.type || 'unknown type'})` : 'FAILED. ' + driveReasonText(r.b)}`);
+                    });
+                }
+                L('');
+                const n = results.length, A = results.filter(r => r.a === true).length, B = results.filter(r => r.b.ok).length;
+                if (A === n) L('RESULT: every sample loads the normal way. Files fail only for other reasons: tell me which ones.');
+                else if (A === 0 && B === n) L('RESULT: this device blocks the normal way of loading Drive files, but the background download works. Arena now switches to that automatically after the first failure.');
+                else if (A === 0 && B === 0) L('RESULT: neither method works. The reason is in the lines above (the first FAILED one is usually the cause).');
+                else L(`RESULT: mixed. ${A} of ${n} load normally and ${B} of ${n} download in the background. Check the per-file lines: the failing ones are probably a format this browser cannot show.`);
+            } catch (e) { L('Diagnostics stopped: ' + e.message); }
+            finally { diagRunning = false; }
+        }
+        $('drive-diag-btn').addEventListener('click', runDriveDiagnostics);
+
         if (drivePrefs.mode === 'key' && drivePrefs.key) applyDriveAuth();      // favorites from Drive work straight away
         if (drivePrefs.mode === 'oauth' && drivePrefs.client) loadGis().catch(() => {});
 
@@ -2260,6 +2676,7 @@
         function saveState(key) {
             const f = favorites.get(key);
             if (!f || f.isStream || f.sprite) return null;
+            if (f._cloud) return { cls: 'cloud', text: '☁ Cloud', tip: 'This favorite lives in your cloud bucket and loads from there on any device.' };
             if (localUrls.has(key)) return { cls: 'ok', text: '💾 Saved', tip: 'This favorite is saved as a file in your folder: it plays even if the original link dies.' };
             if (!FS_OK) return { cls: 'warn', text: '🔗 Link only', tip: 'This browser cannot save files. Use Chrome or Edge, or Export to back up the links.' };
             if (!dirHandle) return { cls: 'warn', text: '⚠ Not saved', tip: 'No save folder is connected, so this favorite is only a link. Click to reconnect / pick the folder.' };
@@ -2417,7 +2834,7 @@
             try {
                 await scanFolderForNew();
                 if (retryFailed) saveTried.clear();
-                const todo = [...favorites.values()].filter(f => !(f._local && localUrls.has(f._key)) && !f.isStream && !f.sprite && !saveTried.has(f._key) && /^https?:/i.test(f.url || ''));
+                const todo = [...favorites.values()].filter(f => !f._cloud && !(f._local && localUrls.has(f._key)) && !f.isStream && !f.sprite && !saveTried.has(f._key) && /^https?:/i.test(f.url || ''));
                 let done = 0, bad = 0;
                 for (const f of todo) {
                     setStatus(`saving ${done + bad + 1}/${todo.length}…`);
@@ -2427,7 +2844,7 @@
                 }
                 saveJSON('arenaFavoritesV1', [...favorites.values()]);
                 const stamp = new Date().toISOString();
-                await writeJSONFile(dirHandle, 'arena-favorites.json', { saved: stamp, favorites: [...favorites.values()], purged: [...purged] });
+                await writeJSONFile(dirHandle, 'arena-favorites.json', { saved: stamp, favorites: [...favorites.values()].filter(f => !f._cloud), purged: [...purged] });
                 await writeJSONFile(dirHandle, 'arena-session.json', { saved: stamp, dismissed: [...dismissed], purged: [...purged], prefs, poolSize: mediaPool.length });
                 const have = [...favorites.values()].filter(f => localUrls.has(f._key)).length;
                 const why = [...saveWhy].filter(([k]) => favorites.has(k) && !localUrls.has(k));
@@ -2540,7 +2957,7 @@
                     if (!(await connectFolder(pendingHandle, true))) { alert('Your save folder is not connected. Reconnect it first (📁 button on the Arena screen) so favorites that have a saved file are not mistaken for dead ones, then try again.'); return; }
                 }
                 if (dirHandle) { await adoptOrphans(); await scanFolderForNew(); }
-                const todo = [...favorites.values()].filter(f => !f._local && !localUrls.has(f._key) && !f.isStream && !f.sprite && /^https?:/i.test(f.url || ''));
+                const todo = [...favorites.values()].filter(f => !f._cloud && !f._local && !localUrls.has(f._key) && !f.isStream && !f.sprite && /^https?:/i.test(f.url || ''));
                 const haveFile = favorites.size - todo.length;
                 if (!todo.length) { alert(`Nothing to check: all ${favorites.size} favorites have a saved file or are streams.`); return; }
                 const dead = [], unsure = []; let n = 0, next = 0;
@@ -2572,7 +2989,7 @@
 
         // Export / import (works in every browser)
         $('fav-export-btn').addEventListener('click', () => {
-            const blob = new Blob([JSON.stringify({ saved: new Date().toISOString(), favorites: [...favorites.values()], dismissed: [...dismissed], purged: [...purged] }, null, 1)], { type: 'application/json' });
+            const blob = new Blob([JSON.stringify({ saved: new Date().toISOString(), favorites: [...favorites.values()].filter(f => !f._cloud), dismissed: [...dismissed], purged: [...purged] }, null, 1)], { type: 'application/json' });
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob); a.download = 'arena-favorites.json';
             document.body.appendChild(a); a.click(); a.remove();
@@ -2613,8 +3030,8 @@
         });
 
         layoutSelect.addEventListener('change', () => {
-            if (layoutSelect.value === 'free' && !Array.isArray(freeRects)) { prefs.layout = 'free'; seedFreeFromCells(); }      // first time: start from the layout you were looking at
             prefs.layout = layoutSelect.value;
+            if (boards[boardKey()]) { delete boards[boardKey()]; saveBoards(); }      // choosing a layout always gives its default arrangement
             syncFreeUi();
             heroTarget = null; heroRR = 0; camRR = 0;
             fitSelect.value = curFit();
